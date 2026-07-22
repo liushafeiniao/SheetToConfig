@@ -43,14 +43,6 @@ class ExportHandler:
         text = str(message or '')
         if '[ERROR]' in text:
             return
-        if text.startswith('Warning: assetRoot is not configured'):
-            key = (
-                'log.asset_root_fallback'
-                if 'legacy client output directory' in text
-                else 'log.asset_root_disabled'
-            )
-            self._log(f"⚠ {tr(key)}")
-            return
         self._log(text)
 
     @staticmethod
@@ -133,7 +125,7 @@ class ExportHandler:
                 csharp_path=self.project.csharp_path or '',
                 export_pb=export_pb,
                 validation_only=validation_only,
-                asset_root=getattr(self.project, 'asset_root', '') or '',
+                asset_root=str(getattr(self.project, 'asset_root', '') or '').strip(),
                 locale=get_locale(),
             )
             self.last_result = result
@@ -142,13 +134,6 @@ class ExportHandler:
                 location = issue.get('path') or issue.get('file') or tr('log.export_task')
                 message = self._localized_issue_message(issue)
                 self._log(f"  ✗ [{issue.get('code')}] {location}: {message}")
-            for platform, changes in result.get('changes', {}).items():
-                for action, label_key in (
-                    ('added', 'log.change_added'), ('modified', 'log.change_modified'), ('removed', 'log.change_removed')
-                ):
-                    paths = changes.get(action, [])
-                    if paths:
-                        self._log(tr('log.changes', platform=platform, action=tr(label_key), paths=', '.join(paths)))
 
             # 统计结果
             total = result['count']

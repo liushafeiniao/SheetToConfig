@@ -13,7 +13,11 @@ from openpyxl import load_workbook
 
 from sheet_to_config.utils.exporter.converter import ExcelConverter
 from sheet_to_config.utils.exporter.exporters.protobuf_exporter import ProtobufExporter
-from sheet_to_config.utils.exporter.protobuf_schema import extract_manifest, ProtoSchemaParser
+from sheet_to_config.utils.exporter.protobuf_schema import (
+    extract_manifest,
+    ProtoSchemaError,
+    ProtoSchemaParser,
+)
 from sheet_to_config.utils.exporter.template import TypeDefinitionTemplate
 
 from tests.workbook_factory import write_workbook
@@ -35,6 +39,14 @@ class AutomaticProtobufTests(unittest.TestCase):
         message = ProtobufExporter(schema)._message_class()
         message.ParseFromString(payload)
         return message
+
+    def _append_type_definitions(self, *definitions):
+        workbook = load_workbook(self.tables / "TypeDefinition.xlsx")
+        worksheet = workbook["CODE"]
+        for definition in definitions:
+            worksheet.append(definition)
+        workbook.save(self.tables / "TypeDefinition.xlsx")
+        workbook.close()
 
     def test_infers_scalars_lists_and_platform_fields_without_proto_sheet(self):
         path = write_workbook(
@@ -138,6 +150,308 @@ class AutomaticProtobufTests(unittest.TestCase):
         self.assertTrue(result["success"], logs)
         proto_text = (self.client / "Source.proto").read_text(encoding="utf-8")
         self.assertIn("string catalog_id", proto_text)
+
+    def test_reference_schema_resolves_target_aliases_to_their_final_scalar_types(self):
+        write_workbook(
+            self.tables / "Target.xlsx",
+            fields=(
+                ("id", "int", "CS"),
+                ("int_value", "int", "CS"),
+                ("id_value", "ID", "CS"),
+                ("int32_value", "int32", "CS"),
+                ("custom_int_value", "nested_int", "CS"),
+                ("indirect_value", "indirect_int", "CS"),
+                ("string_value", "string", "CS"),
+                ("str_value", "str", "CS"),
+                ("float_value", "nested_float", "CS"),
+                ("bool_value", "nested_bool", "CS"),
+                ("bytes_value", "nested_bytes", "CS"),
+            ),
+            data_rows=((1, 11, 12, 13, 14, 15, "s", "t", 1.5, True, "bytes"),),
+            code_rows=(("Target", "Target.json", "c"),),
+            sheet="Target",
+        )
+        self._append_type_definitions(
+            ("ID", "int", "integer ID alias"),
+            ("int32", "int", "protobuf-sized integer alias"),
+            ("custom_int", "int", "custom integer alias"),
+            ("nested_int", "custom_int", "indirect integer alias"),
+            ("custom_float", "float", "custom float alias"),
+            ("nested_float", "custom_float", "indirect float alias"),
+            ("custom_bool", "bool", "custom bool alias"),
+            ("nested_bool", "custom_bool", "indirect bool alias"),
+            ("custom_bytes", "bytes", "custom bytes alias"),
+            ("nested_bytes", "custom_bytes", "indirect bytes alias"),
+            ("indirect_int", "find_id(Target,Target,int_value)", "indirect find_id"),
+            ("ref_int", "find_id(Target,Target,int_value)", "direct integer reference"),
+            ("ref_id", "find_id(Target,Target,id_value)", "ID reference"),
+            ("ref_int32", "find_id(Target,Target,int32_value)", "int32 reference"),
+            ("ref_custom_int", "find_id(Target,Target,custom_int_value)", "custom integer reference"),
+            ("ref_indirect", "find_id(Target,Target,indirect_value)", "indirect find_id reference"),
+            ("ref_string", "find_id(Target,Target,string_value)", "string reference"),
+            ("ref_str", "find_id(Target,Target,str_value)", "str reference"),
+            ("ref_float", "find_id(Target,Target,float_value)", "float reference"),
+            ("ref_bool", "find_id(Target,Target,bool_value)", "bool reference"),
+            ("ref_bytes", "find_id(Target,Target,bytes_value)", "bytes reference"),
+            ("ref_find", "find(Target,Target,int_value)", "find alias reference"),
+        )
+        source_path = write_workbook(
+            self.tables / "Source.xlsx",
+            fields=(
+                ("id", "int", "CS"),
+                ("direct_int", "ref_int", "CS"),
+                ("id_alias", "ref_id", "CS"),
+                ("int32_alias", "ref_int32", "CS"),
+                ("custom_int", "ref_custom_int", "CS"),
+                ("indirect_find", "ref_indirect", "CS"),
+                ("direct_string", "ref_string", "CS"),
+                ("direct_str", "ref_str", "CS"),
+                ("direct_float", "ref_float", "CS"),
+                ("direct_bool", "ref_bool", "CS"),
+                ("direct_bytes", "ref_bytes", "CS"),
+                ("find_alias", "ref_find", "CS"),
+            ),
+            data_rows=((1, 11, 12, 13, 14, 15, "s", "t", 1.5, True, "bytes", 11),),
+            code_rows=(("Source", "Source.pb", "c"),),
+            sheet="Source",
+        )
+
+        try:
+            schema = ProtoSchemaParser.parse_workbook(str(source_path), "Source")
+        except ProtoSchemaError as exc:
+            self.fail(f"reference aliases should resolve to scalar types: {exc}")
+        fields = {field.name: field.type_name for field in schema.messages["SourceRow"].fields}
+
+        self.assertEqual(
+            {
+                "id": "int32",
+                "direct_int": "int32",
+                "id_alias": "int32",
+                "int32_alias": "int32",
+                "custom_int": "int32",
+                "indirect_find": "int32",
+                "direct_string": "string",
+                "direct_str": "string",
+                "direct_float": "double",
+                "direct_bool": "bool",
+                "direct_bytes": "bytes",
+                "find_alias": "int32",
+            },
+            fields,
+        )
+
+    def test_cyclic_normal_alias_fails_with_a_clear_diagnostic(self):
+        write_workbook(
+            self.tables / "Target.xlsx",
+            fields=(("id", "int", "CS"), ("loop_value", "cycle_a", "CS")),
+            data_rows=((1, 1),),
+            code_rows=(("Target", "Target.json", "c"),),
+            sheet="Target",
+        )
+        self._append_type_definitions(
+            ("cycle_a", "cycle_b", "first alias in cycle"),
+            ("cycle_b", "cycle_a", "second alias in cycle"),
+            ("source_ref", "find_id(Target,Target,loop_value)", "source reference"),
+        )
+        source_path = write_workbook(
+            self.tables / "Source.xlsx",
+            fields=(("id", "int", "CS"), ("loop", "source_ref", "CS")),
+            data_rows=((1, 1),),
+            code_rows=(("Source", "Source.pb", "c"),),
+            sheet="Source",
+        )
+
+        with self.assertRaises(ProtoSchemaError) as raised:
+            ProtoSchemaParser.parse_workbook(str(source_path), "Source")
+
+        self.assertRegex(str(raised.exception), r"(?i)cycle|循环|self")
+
+    def test_pure_find_id_cycle_falls_back_to_an_integer_schema(self):
+        write_workbook(
+            self.tables / "Target.xlsx",
+            fields=(
+                ("id", "int", "CS"),
+                ("first", "first_ref", "CS"),
+                ("second", "second_ref", "CS"),
+            ),
+            data_rows=((1, 1, 1),),
+            code_rows=(("Target", "Target.json", "c"),),
+            sheet="Target",
+        )
+        self._append_type_definitions(
+            ("first_ref", "find_id(Target,Target,second)", "first find_id in cycle"),
+            ("second_ref", "find_id(Target,Target,first)", "second find_id in cycle"),
+            ("source_ref", "find_id(Target,Target,first)", "source reference"),
+        )
+        source_path = write_workbook(
+            self.tables / "Source.xlsx",
+            fields=(("id", "int", "CS"), ("loop", "source_ref", "CS")),
+            data_rows=((1, 1),),
+            code_rows=(("Source", "Source.pb", "c"),),
+            sheet="Source",
+        )
+
+        schema = ProtoSchemaParser.parse_workbook(str(source_path), "Source")
+        field = next(field for field in schema.messages["SourceRow"].fields if field.name == "loop")
+        self.assertEqual("int32", field.type_name)
+
+    def test_reference_to_missing_workbook_uses_string_schema_then_fails_validation(self):
+        self._append_type_definitions(
+            ("missing_book_ref", "find_id(Missing,Missing,id)", "missing workbook"),
+        )
+        source_path = write_workbook(
+            self.tables / "Source.xlsx",
+            fields=(("id", "int", "CS"), ("missing", "missing_book_ref", "CS")),
+            data_rows=((1, 404),),
+            code_rows=(("Source", "Source.pb", "c"),),
+            sheet="Source",
+        )
+
+        schema = ProtoSchemaParser.parse_workbook(str(source_path), "Source")
+        field = next(field for field in schema.messages["SourceRow"].fields if field.name == "missing")
+        self.assertEqual("string", field.type_name)
+
+        result = ExcelConverter().export_all(
+            str(self.tables), str(self.client), str(self.server), "c"
+        )
+        self.assertFalse(result["success"])
+        self.assertIn("REFERENCE_TABLE_ERROR", {issue["code"] for issue in result["issues"]})
+        self.assertFalse((self.client / "Source.pb").exists())
+
+    def test_reference_to_missing_field_uses_string_schema_then_fails_validation(self):
+        write_workbook(
+            self.tables / "Target.xlsx",
+            fields=(("id", "int", "CS"),),
+            data_rows=((1,),),
+            code_rows=(("Target", "Target.json", "c"),),
+            sheet="Target",
+        )
+        self._append_type_definitions(
+            ("missing_field_ref", "find_id(Target,Target,missing_field)", "missing field"),
+        )
+        source_path = write_workbook(
+            self.tables / "Source.xlsx",
+            fields=(("id", "int", "CS"), ("missing", "missing_field_ref", "CS")),
+            data_rows=((1, 404),),
+            code_rows=(("Source", "Source.pb", "c"),),
+            sheet="Source",
+        )
+
+        schema = ProtoSchemaParser.parse_workbook(str(source_path), "Source")
+        field = next(field for field in schema.messages["SourceRow"].fields if field.name == "missing")
+        self.assertEqual("string", field.type_name)
+
+        result = ExcelConverter().export_all(
+            str(self.tables), str(self.client), str(self.server), "c"
+        )
+        self.assertFalse(result["success"])
+        self.assertIn("REFERENCE_TABLE_ERROR", {issue["code"] for issue in result["issues"]})
+        self.assertFalse((self.client / "Source.pb").exists())
+
+    def test_reference_aliases_and_lists_serialize_with_the_inferred_schema(self):
+        target_path = write_workbook(
+            self.tables / "Target.xlsx",
+            fields=(
+                ("id", "int", "CS"),
+                ("id_alias", "ID", "CS"),
+                ("int32_alias", "int32", "CS"),
+                ("string_alias", "nested_string", "CS"),
+                ("indirect_alias", "indirect_ref", "CS"),
+            ),
+            data_rows=((1, 1001, 2001, "alpha", 1001), (2, 1002, 2002, "beta", 1002)),
+            code_rows=(("Target", "Target.json", "c"),),
+            sheet="Target",
+        )
+        target_workbook = load_workbook(target_path)
+        independent = target_workbook.create_sheet("IndependentDefinitions")
+        independent.append(("indirect_alias",))
+        independent.append(("ID",))
+        independent.append(("CS",))
+        independent.append(("",))
+        independent.append((1001,))
+        independent.append((1002,))
+        target_workbook.save(target_path)
+        target_workbook.close()
+        self._append_type_definitions(
+            ("ID", "int", "integer ID alias"),
+            ("int32", "int", "int32 alias"),
+            ("string_base", "string", "string alias"),
+            ("nested_string", "string_base", "indirect string alias"),
+            ("indirect_ref", "find_id(Target,Target,id_alias)", "indirect reference"),
+            ("id_ref", "find_id(Target,Target,id_alias)", "ID reference"),
+            ("int32_ref", "find_id(Target,Target,int32_alias)", "int32 reference"),
+            ("string_ref", "find_id(Target,Target,string_alias)", "string reference"),
+            ("indirect_value_ref", "find_id(Target,Target,indirect_alias)", "indirect reference value"),
+            ("id_refs", "split_list(find_id(Target,Target,id_alias))", "reference list"),
+        )
+        source_path = write_workbook(
+            self.tables / "Source.xlsx",
+            fields=(
+                ("id", "int", "CS"),
+                ("item_id", "id_ref", "CS"),
+                ("item_int32", "int32_ref", "CS"),
+                ("item_string", "string_ref", "CS"),
+                ("item_indirect", "indirect_value_ref", "CS"),
+                ("items", "id_refs", "CS"),
+            ),
+            data_rows=((1, 1001, 2001, "alpha", 1001, "1001#1002"),),
+            code_rows=(("Source", "Source.pb", "c"),),
+            sheet="Source",
+        )
+        logs = []
+
+        result = ExcelConverter(logs.append).export_all(
+            str(self.tables), str(self.client), str(self.server), "c"
+        )
+
+        self.assertTrue(result["success"], logs)
+        schema = ProtoSchemaParser.parse_workbook(str(source_path), "Source")
+        row = self._decode(schema, (self.client / "Source.pb").read_bytes()).rows[0]
+        self.assertEqual(1001, row.item_id)
+        self.assertEqual(2001, row.item_int32)
+        self.assertEqual("alpha", row.item_string)
+        self.assertEqual(1001, row.item_indirect)
+        self.assertEqual([1001, 1002], list(row.items))
+
+    def test_bool_and_bytes_references_use_canonical_target_values(self):
+        write_workbook(
+            self.tables / "Target.xlsx",
+            fields=(
+                ("id", "int", "CS"),
+                ("enabled", "bool", "CS"),
+                ("token", "bytes", "CS"),
+            ),
+            data_rows=((1, 1, "alpha"),),
+            code_rows=(("Target", "Target.pb", "c"),),
+            sheet="Target",
+        )
+        self._append_type_definitions(
+            ("enabled_ref", "find_id(Target,Target,enabled)", "bool reference"),
+            ("token_ref", "find_id(Target,Target,token)", "bytes reference"),
+        )
+        source_path = write_workbook(
+            self.tables / "Source.xlsx",
+            fields=(
+                ("id", "int", "CS"),
+                ("enabled", "enabled_ref", "CS"),
+                ("token", "token_ref", "CS"),
+            ),
+            data_rows=((1, "true", "alpha"),),
+            code_rows=(("Source", "Source.pb", "c"),),
+            sheet="Source",
+        )
+
+        result = ExcelConverter().export_all(
+            str(self.tables), str(self.client), str(self.server), "c"
+        )
+
+        self.assertTrue(result["success"], result["issues"])
+        schema = ProtoSchemaParser.parse_workbook(str(source_path), "Source")
+        row = self._decode(
+            schema, (self.client / "Source.pb").read_bytes()
+        ).rows[0]
+        self.assertTrue(row.enabled)
+        self.assertEqual(b"alpha", row.token)
 
     def test_manifest_keeps_numbers_when_columns_are_inserted_and_reserves_deleted_field(self):
         path = write_workbook(

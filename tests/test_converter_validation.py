@@ -1,3 +1,4 @@
+import json
 import tempfile
 import unittest
 from pathlib import Path
@@ -7,6 +8,124 @@ from openpyxl import load_workbook
 from tests.workbook_factory import write_workbook
 from sheet_to_config.utils.exporter.converter import ExcelConverter
 from sheet_to_config.utils.exporter.template import TypeDefinitionTemplate
+
+
+def export_same_workbook_reference(reference_value, *, reference_type="catalog_ref",
+                                   extra_type_definitions=(),
+                                   include_independent_definition=True,
+                                   additional_candidate_type=None,
+                                   catalog_reference_conversion=(
+                                       "find_id(Catalog,DisplayOnly,target_id)"
+                                   )):
+    with tempfile.TemporaryDirectory() as temp_dir:
+        root = Path(temp_dir)
+        tables = root / "tables"
+        tables.mkdir()
+        TypeDefinitionTemplate.ensure_exists(str(tables))
+        definition = load_workbook(tables / "TypeDefinition.xlsx")
+        definition["CODE"].append((
+            "catalog_ref",
+            catalog_reference_conversion,
+            "",
+        ))
+        for type_definition in extra_type_definitions:
+            definition["CODE"].append(type_definition)
+        definition.save(tables / "TypeDefinition.xlsx")
+        definition.close()
+
+        if include_independent_definition:
+            code_rows = [
+                ("Definitions", "Definitions.json", "c"),
+                ("References", "References.json", "c"),
+            ]
+            if additional_candidate_type:
+                code_rows.append(("NonScalar", "NonScalar.json", "c"))
+            workbook_path = write_workbook(
+                tables / "Catalog.xlsx",
+                fields=(
+                    ("row_id", "int", "CS"),
+                    ("target_id", "int", "CS"),
+                ),
+                data_rows=((1, 1),),
+                code_rows=code_rows,
+                sheet="Definitions",
+            )
+            workbook = load_workbook(workbook_path)
+            references = workbook.create_sheet("References")
+            references.append(("row_id", "target_id"))
+            references.append(("int", reference_type))
+            references.append(("CS", "CS"))
+            references.append(("", ""))
+            references.append((2, reference_value))
+            if additional_candidate_type:
+                non_scalar = workbook.create_sheet("NonScalar")
+                non_scalar.append(("row_id", "target_id"))
+                non_scalar.append(("int", additional_candidate_type))
+                non_scalar.append(("CS", "CS"))
+                non_scalar.append(("", ""))
+                non_scalar.append((3, "999999"))
+            workbook.save(workbook_path)
+            workbook.close()
+        else:
+            write_workbook(
+                tables / "Catalog.xlsx",
+                fields=(
+                    ("row_id", "int", "CS"),
+                    ("target_id", reference_type, "CS"),
+                ),
+                data_rows=((2, reference_value),),
+                code_rows=(("References", "References.json", "c"),),
+                sheet="References",
+            )
+
+        return ExcelConverter().export_all(
+            str(tables), str(root / "client"), str(root / "server"),
+            "c", validation_only=True,
+        )
+
+
+def export_zero_references(target_int, target_float):
+    with tempfile.TemporaryDirectory() as temp_dir:
+        root = Path(temp_dir)
+        tables = root / "tables"
+        tables.mkdir()
+        TypeDefinitionTemplate.ensure_exists(str(tables))
+        definition = load_workbook(tables / "TypeDefinition.xlsx")
+        definition["CODE"].append((
+            "int_ref", "find_id(Target,DisplayOnly,int_id)", ""
+        ))
+        definition["CODE"].append((
+            "float_ref", "find_id(Target,DisplayOnly,float_id)", ""
+        ))
+        definition.save(tables / "TypeDefinition.xlsx")
+        definition.close()
+        write_workbook(
+            tables / "Target.xlsx",
+            fields=(
+                ("row_id", "int", "CS"),
+                ("int_id", "int", "CS"),
+                ("float_id", "float", "CS"),
+            ),
+            data_rows=((1, target_int, target_float),),
+            code_rows=(("Target", "Target.json", "c"),),
+            sheet="Target",
+        )
+        write_workbook(
+            tables / "Source.xlsx",
+            fields=(
+                ("row_id", "int", "CS"),
+                ("int_id", "int_ref", "CS"),
+                ("float_id", "float_ref", "CS"),
+            ),
+            data_rows=((9, None, None), (10, 0, 0.0)),
+            code_rows=(("Source", "Source.json", "c"),),
+            sheet="Source",
+        )
+
+        return ExcelConverter().export_all(
+            str(tables), str(root / "client"), str(root / "server"),
+            "c", validation_only=True,
+        )
 
 
 class ConverterValidationTests(unittest.TestCase):
@@ -86,6 +205,7 @@ class ConverterValidationTests(unittest.TestCase):
             root = Path(temp_dir)
             tables = root / "tables"
             assets = root / "assets"
+            client = root / "client"
             tables.mkdir()
             (assets / "icons").mkdir(parents=True)
             (assets / "icons" / "sword.png").write_bytes(b"png")
@@ -95,7 +215,7 @@ class ConverterValidationTests(unittest.TestCase):
             workbook.save(tables / "TypeDefinition.xlsx")
             workbook.close()
 
-            def export_value(value):
+            def export_value(value, validation_only=True):
                 write_workbook(
                     tables / "Asset.xlsx",
                     fields=(("id", "int", "CS"), ("icon", "asset", "CS")),
@@ -103,11 +223,17 @@ class ConverterValidationTests(unittest.TestCase):
                     code_rows=(("Item", "Asset.json", "c"),),
                 )
                 return ExcelConverter().export_all(
-                    str(tables), str(root / "client"), str(root / "server"),
-                    "c", validation_only=True, asset_root=str(assets),
+                    str(tables), str(client), str(root / "server"),
+                    "c", validation_only=validation_only, asset_root=str(assets),
                 )
 
             self.assertTrue(export_value("sword")["success"])
+            blank = export_value("   ", validation_only=False)
+            self.assertTrue(blank["success"], blank["issues"])
+            payload = json.loads(
+                (client / "Asset.json").read_text(encoding="utf-8")
+            )
+            self.assertEqual("", payload["1"]["icon"])
             missing = export_value("missing")
             self.assertFalse(missing["success"])
             self.assertIn("文件不存在", missing["issues"][0]["message"])
@@ -117,14 +243,20 @@ class ConverterValidationTests(unittest.TestCase):
                 "越过资源根目录" in issue["message"] for issue in traversal["issues"]
             ))
 
-    def test_missing_asset_root_logs_one_warning_without_blocking_export(self):
+    def test_missing_asset_root_skips_path_checks_without_warning(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)
             tables = root / "tables"
             tables.mkdir()
+            TypeDefinitionTemplate.ensure_exists(str(tables))
+            workbook = load_workbook(tables / "TypeDefinition.xlsx")
+            workbook["CODE"].append(("asset", "path(icons/,.png)", ""))
+            workbook.save(tables / "TypeDefinition.xlsx")
+            workbook.close()
             write_workbook(
                 tables / "Item.xlsx",
-                fields=(("id", "int", "CS"),), data_rows=((1,),),
+                fields=(("id", "int", "CS"), ("icon", "asset", "CS")),
+                data_rows=((1, "missing"),),
                 code_rows=(("Item", "Item.json", "c"),),
             )
             logs = []
@@ -133,10 +265,66 @@ class ConverterValidationTests(unittest.TestCase):
                 "c", validation_only=True,
             )
             self.assertTrue(result["success"], result["issues"])
-            self.assertEqual(sum("assetRoot" in line for line in logs), 1)
-            self.assertFalse((tables / "TypeDefinition.xlsx").exists())
+            self.assertEqual(sum("assetRoot" in line for line in logs), 0)
             self.assertFalse((root / "client").exists())
             self.assertFalse((root / "server").exists())
+
+    def test_reference_validation_canonicalizes_aliases_and_keeps_dict_shape(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            tables = root / "tables"
+            client = root / "client"
+            tables.mkdir()
+            TypeDefinitionTemplate.ensure_exists(str(tables))
+            definition = load_workbook(tables / "TypeDefinition.xlsx")
+            definition["CODE"].append(("ID", "int", "integer alias"))
+            definition["CODE"].append((
+                "asset_path", "path(icons/,.png)", "asset path alias"
+            ))
+            definition["CODE"].append((
+                "id_ref", "find_id(Target,Target,target_id)", "ID reference"
+            ))
+            definition["CODE"].append((
+                "path_ref", "find_id(Target,Target,asset_key)", "path reference"
+            ))
+            definition.save(tables / "TypeDefinition.xlsx")
+            definition.close()
+
+            write_workbook(
+                tables / "Target.xlsx",
+                fields=(
+                    ("id", "int", "CS"),
+                    ("target_id", "ID", "CS"),
+                    ("asset_key", "asset_path", "CS"),
+                ),
+                data_rows=((1, "001", "sword"),),
+                code_rows=(("Target", "Target.json", "c"),),
+                sheet="Target",
+            )
+            write_workbook(
+                tables / "Source.xlsx",
+                fields=(
+                    ("id", "int", "CS"),
+                    ("target_id", "id_ref", "CS"),
+                    ("asset_key", "path_ref", "CS"),
+                ),
+                data_rows=((1, 1, "sword"),),
+                code_rows=(("Source", "Source.json", "c"),),
+                sheet="Source",
+            )
+
+            result = ExcelConverter().export_all(
+                str(tables), str(client), str(root / "server"), "c"
+            )
+
+            self.assertTrue(result["success"], result["issues"])
+            payload = json.loads(
+                (client / "Source.json").read_text(encoding="utf-8")
+            )["1"]
+            self.assertIsInstance(payload["target_id"], dict)
+            self.assertEqual(1, payload["target_id"]["target_id"])
+            self.assertIsInstance(payload["asset_key"], dict)
+            self.assertEqual("sword", payload["asset_key"]["asset_key"])
 
     def test_code_bytes_and_reference_failures_have_specific_issue_codes(self):
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -354,6 +542,270 @@ class ConverterValidationTests(unittest.TestCase):
                 ("target_id", 5, 2),
             )
             self.assertIn("='99'", issues[0]["message"])
+
+    def test_same_workbook_reference_column_cannot_define_target_ids(self):
+        result = export_same_workbook_reference(999999)
+
+        issues = [
+            issue for issue in result["issues"]
+            if issue["code"] == "REFERENCE_NOT_FOUND"
+        ]
+        self.assertFalse(result["success"], result["issues"])
+        self.assertEqual(len(issues), 1, result["issues"])
+        self.assertEqual(
+            (issues[0]["sheet"], issues[0]["field"], issues[0]["row"]),
+            ("References", "target_id", 5),
+        )
+        self.assertIn("='999999'", issues[0]["message"])
+
+    def test_same_workbook_reference_to_independent_id_passes(self):
+        result = export_same_workbook_reference(1)
+
+        self.assertTrue(result["success"], result["issues"])
+        self.assertEqual([], result["issues"])
+
+    def test_indirect_reference_alias_cannot_define_target_ids(self):
+        result = export_same_workbook_reference(
+            999999,
+            reference_type="indirect_catalog_ref",
+            extra_type_definitions=((
+                "indirect_catalog_ref", "catalog_ref", "indirect reference alias"
+            ),),
+        )
+
+        self.assertFalse(result["success"], result["issues"])
+        self.assertIn(
+            "REFERENCE_NOT_FOUND",
+            {issue["code"] for issue in result["issues"]},
+        )
+
+    def test_reference_spacing_cannot_bypass_id_source_filter(self):
+        result = export_same_workbook_reference(
+            999999,
+            catalog_reference_conversion=(
+                "find_id (Catalog,DisplayOnly,target_id)"
+            ),
+        )
+
+        self.assertFalse(result["success"], result["issues"])
+        self.assertIn(
+            "REFERENCE_NOT_FOUND",
+            {issue["code"] for issue in result["issues"]},
+        )
+
+    def test_reference_target_without_independent_scalar_definition_is_an_error(self):
+        result = export_same_workbook_reference(
+            1, include_independent_definition=False
+        )
+
+        errors = [
+            issue for issue in result["issues"]
+            if issue["code"] == "REFERENCE_TABLE_ERROR"
+        ]
+        self.assertFalse(result["success"], result["issues"])
+        self.assertEqual(1, len(errors), result["issues"])
+        self.assertIn("没有独立标量定义列", errors[0]["message"])
+
+    def test_string_reference_chain_without_independent_definition_is_an_error(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            tables = root / "tables"
+            tables.mkdir()
+            TypeDefinitionTemplate.ensure_exists(str(tables))
+            definition = load_workbook(tables / "TypeDefinition.xlsx")
+            definition["CODE"].append((
+                "other_ref", "find_id(Other,DisplayOnly,id)", ""
+            ))
+            definition["CODE"].append((
+                "catalog_ref", "find_id(Catalog,DisplayOnly,target_id)", ""
+            ))
+            definition.save(tables / "TypeDefinition.xlsx")
+            definition.close()
+            write_workbook(
+                tables / "Other.xlsx",
+                fields=(("id", "string", "CS"),),
+                data_rows=(("alpha",),),
+                code_rows=(("Other", "Other.json", "c"),),
+                sheet="Other",
+            )
+            write_workbook(
+                tables / "Catalog.xlsx",
+                fields=(
+                    ("row_id", "int", "CS"),
+                    ("target_id", "other_ref", "CS"),
+                ),
+                data_rows=((1, "alpha"),),
+                code_rows=(("Catalog", "Catalog.json", "c"),),
+                sheet="Catalog",
+            )
+            write_workbook(
+                tables / "Source.xlsx",
+                fields=(
+                    ("row_id", "int", "CS"),
+                    ("target_id", "catalog_ref", "CS"),
+                ),
+                data_rows=((1, "alpha"),),
+                code_rows=(("Source", "Source.json", "c"),),
+                sheet="Source",
+            )
+
+            result = ExcelConverter().export_all(
+                str(tables), str(root / "client"), str(root / "server"),
+                "c", validation_only=True,
+            )
+
+            errors = [
+                issue for issue in result["issues"]
+                if issue["code"] == "REFERENCE_TABLE_ERROR"
+            ]
+            self.assertFalse(result["success"], result["issues"])
+            self.assertEqual(1, len(errors), result["issues"])
+            self.assertIn("没有独立标量定义列", errors[0]["message"])
+
+    def test_non_scalar_same_named_column_cannot_define_target_ids(self):
+        result = export_same_workbook_reference(
+            999999, additional_candidate_type="intList"
+        )
+
+        self.assertFalse(result["success"], result["issues"])
+        self.assertIn(
+            "REFERENCE_NOT_FOUND",
+            {issue["code"] for issue in result["issues"]},
+        )
+
+    def test_reference_column_to_another_target_cannot_define_ids(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            tables = root / "tables"
+            tables.mkdir()
+            TypeDefinitionTemplate.ensure_exists(str(tables))
+            definition = load_workbook(tables / "TypeDefinition.xlsx")
+            definition["CODE"].append((
+                "catalog_ref", "find_id(Catalog,DisplayOnly,target_id)", ""
+            ))
+            definition["CODE"].append((
+                "other_ref", "find_id(Other,DisplayOnly,id)", ""
+            ))
+            definition.save(tables / "TypeDefinition.xlsx")
+            definition.close()
+            write_workbook(
+                tables / "Other.xlsx",
+                fields=(("id", "int", "CS"),),
+                data_rows=((999999,),),
+                code_rows=(("Other", "Other.json", "c"),),
+                sheet="Other",
+            )
+            workbook_path = write_workbook(
+                tables / "Catalog.xlsx",
+                fields=(
+                    ("row_id", "int", "CS"),
+                    ("target_id", "int", "CS"),
+                ),
+                data_rows=((1, 1),),
+                code_rows=(
+                    ("Definitions", "Definitions.json", "c"),
+                    ("References", "References.json", "c"),
+                    ("OtherReferences", "OtherReferences.json", "c"),
+                ),
+                sheet="Definitions",
+            )
+            workbook = load_workbook(workbook_path)
+            references = workbook.create_sheet("References")
+            references.append(("row_id", "target_id"))
+            references.append(("int", "catalog_ref"))
+            references.append(("CS", "CS"))
+            references.append(("", ""))
+            references.append((2, 999999))
+            other_references = workbook.create_sheet("OtherReferences")
+            other_references.append(("row_id", "target_id"))
+            other_references.append(("int", "other_ref"))
+            other_references.append(("CS", "CS"))
+            other_references.append(("", ""))
+            other_references.append((3, 999999))
+            workbook.save(workbook_path)
+            workbook.close()
+
+            result = ExcelConverter().export_all(
+                str(tables), str(root / "client"), str(root / "server"),
+                "c", validation_only=True,
+            )
+
+            self.assertFalse(result["success"], result["issues"])
+            missing = [
+                issue for issue in result["issues"]
+                if issue["code"] == "REFERENCE_NOT_FOUND"
+                and issue["sheet"] == "References"
+            ]
+            self.assertEqual(1, len(missing), result["issues"])
+            self.assertIn("='999999'", missing[0]["message"])
+
+    def test_explicit_zero_references_are_validated(self):
+        result = export_zero_references(1, 1.5)
+
+        issues = [
+            issue for issue in result["issues"]
+            if issue["code"] == "REFERENCE_NOT_FOUND"
+        ]
+        self.assertFalse(result["success"], result["issues"])
+        self.assertEqual({"int_id", "float_id"}, {
+            issue["field"] for issue in issues
+        })
+        self.assertEqual({6}, {issue["row"] for issue in issues})
+
+    def test_explicit_zero_references_pass_when_targets_define_zero(self):
+        result = export_zero_references(0, 0.0)
+
+        self.assertTrue(result["success"], result["issues"])
+        self.assertEqual([], result["issues"])
+
+    def test_split_list_reference_reports_any_missing_member(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            tables = root / "tables"
+            tables.mkdir()
+            TypeDefinitionTemplate.ensure_exists(str(tables))
+            definition = load_workbook(tables / "TypeDefinition.xlsx")
+            definition["CODE"].append((
+                "catalog_refs",
+                "split_list(find_id(Target,DisplayOnly,target_id))",
+                "",
+            ))
+            definition.save(tables / "TypeDefinition.xlsx")
+            definition.close()
+            write_workbook(
+                tables / "Target.xlsx",
+                fields=(
+                    ("row_id", "int", "CS"),
+                    ("target_id", "int", "CS"),
+                ),
+                data_rows=((1, 1),),
+                code_rows=(("Target", "Target.json", "c"),),
+                sheet="Target",
+            )
+            write_workbook(
+                tables / "Source.xlsx",
+                fields=(
+                    ("row_id", "int", "CS"),
+                    ("target_ids", "catalog_refs", "CS"),
+                ),
+                data_rows=((10, "1#99"),),
+                code_rows=(("Source", "Source.json", "c"),),
+                sheet="Source",
+            )
+
+            result = ExcelConverter().export_all(
+                str(tables), str(root / "client"), str(root / "server"),
+                "c", validation_only=True,
+            )
+
+            errors = [
+                issue for issue in result["issues"]
+                if issue["code"] == "REFERENCE_NOT_FOUND"
+            ]
+            self.assertFalse(result["success"], result["issues"])
+            self.assertEqual(1, len(errors), result["issues"])
+            self.assertEqual("target_ids", errors[0]["field"])
+            self.assertIn("='99'", errors[0]["message"])
 
     def test_corrupt_workbook_is_read_and_reported_once(self):
         with tempfile.TemporaryDirectory() as temp_dir:

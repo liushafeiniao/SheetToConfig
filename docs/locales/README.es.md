@@ -13,7 +13,7 @@
 
 <p align="center">
   <a href="https://github.com/liushafeiniao/SheetToConfig/actions/workflows/tests.yml"><img alt="Estado de las pruebas" src="https://img.shields.io/github/actions/workflow/status/liushafeiniao/SheetToConfig/tests.yml?branch=main&style=flat-square&label=tests"></a>
-  <a href="https://github.com/liushafeiniao/SheetToConfig/releases"><img alt="Versión actual 1.0.0" src="https://img.shields.io/badge/version-1.0.0-00D4AA?style=flat-square"></a>
+  <a href="https://github.com/liushafeiniao/SheetToConfig/releases"><img alt="Versión actual 1.0.1" src="https://img.shields.io/badge/version-1.0.1-00D4AA?style=flat-square"></a>
   <img alt="Windows estable; macOS desde código fuente y CI" src="https://img.shields.io/badge/platform-Windows%20stable%20%7C%20macOS%20source%2FCI-24292F?style=flat-square">
   <a href="../../LICENSE"><img alt="MIT License" src="https://img.shields.io/badge/license-MIT-24292F?style=flat-square"></a>
 </p>
@@ -168,7 +168,7 @@ find(file_prefix, display_label, field)
 - `file_prefix` localiza el libro `.xlsx` de destino por prefijo de nombre de archivo.
 - `display_label` solo se usa para mostrar; no se usa para elegir la hoja.
 - `field` es el campo de destino con el que se compara; los datos se leen desde la fila 5.
-- Los valores vacíos se tratan según el tipo real del campo de destino; un libro, campo o ID ausente hace fallar la validación.
+- Para Protobuf, `find_id` usa el tipo escalar final del destino referenciado como tipo de campo; un libro, campo o ID ausente hace fallar la validación.
 - Las referencias de lista se expanden por su separador antes de validarse; si fallan, se cancela todo el lote y se conservan los productos anteriores.
 - `find` es el alias idéntico de `find_id`; ningún otro nombre es una capacidad pública.
 
@@ -206,7 +206,7 @@ La exportación prepara todo el lote y lo confirma de forma atómica. Si falla c
 </details>
 
 <details>
-<summary><strong>Exportación Protobuf</strong> — <code>.pb</code> genera el <code>.proto</code> homónimo, protocolo superconjunto e interruptor de cambios incompatibles</summary>
+<summary><strong>Exportación Protobuf</strong> — <code>.pb</code> genera el <code>.proto</code> homónimo, protocolo superconjunto y reconstrucción de schema</summary>
 
 Escribiendo un nombre de archivo `.pb` en la columna `File` de la hoja `CODE` se generan el `.proto` y el `.pb` homónimos:
 
@@ -221,7 +221,7 @@ QuestConfig.pb
 - Cliente y servidor comparten el mismo `.proto` superconjunto de campos, y cada `.pb` contiene solo los datos permitidos para su destino.
 - Con una ruta de salida C# configurada, se puede invocar `protoc` para generar archivos C#.
 
-La interfaz de escritorio prohíbe por defecto los cambios incompatibles del protocolo: si detecta un cambio de esquema incompatible, informa del error directamente. Solo se permite una reconstrucción incompatible tras marcar explícitamente «Permitir cambios incompatibles del esquema Protobuf», que surte efecto en el momento de marcarla; los protocolos ya publicados deben seguir revisándose con el diff de `.proto`.
+Las exportaciones de escritorio y «Solo validar» aceptan automáticamente el schema actual de Excel y reconstruyen a partir de él el protocolo Protobuf. Esto no omite la validación de claves primarias, tipos ni otros datos; los archivos `.proto` no administrados o dañados se siguen rechazando. Revisa el diff de `.proto` de los protocolos ya publicados. La API de Python subyacente conserva `allow_breaking_proto_change` con su valor predeterminado `False`, por lo que sigue siendo estricta de forma predeterminada.
 
 </details>
 
@@ -234,7 +234,7 @@ La interfaz de escritorio prohíbe por defecto los cambios incompatibles del pro
 | Ruta del cliente | Sí | Directorio de salida de la configuración y el manifest del cliente |
 | Ruta del servidor | Sí | Directorio de salida de la configuración y el manifest del servidor |
 | Ruta de salida C# | No | Directorio de los tipos C# generados por `protoc` |
-| Raíz de recursos | No | Valida que los resultados de `path()` no salgan de la raíz y que los archivos existan de verdad; si está vacía, recurre a la carpeta de salida del cliente para seguir validando y muestra una advertencia |
+| Raíz de recursos | No | Cuando se configura, valida que los valores `path()` rellenados no salgan de la raíz y que los archivos existan; si está vacía, se omiten todas las comprobaciones de existencia de `path()`, sin respaldo ni advertencia |
 | Carpeta compartida | No | Directorio de destino de la acción «Sincronizar» |
 
 Cuando el código fuente está en el subdirectorio `GitHub` del proyecto padre y existe un `LocalData` al mismo nivel, el estado local se escribe en ese directorio; en otros entornos de código fuente se usa el directorio de configuración del usuario del sistema; el EXE de Windows escribe por defecto en el directorio del ejecutable. Se puede sobrescribir con una variable de entorno:
@@ -330,6 +330,6 @@ Antes de enviar código, ejecuta primero la suite de pruebas completa. Los cambi
 
 ## Versión y licencia
 
-- Versión actual: `1.0.0` en [`sheet_to_config/version.py`](../../sheet_to_config/version.py)
+- Versión actual: `1.0.1` en [`sheet_to_config/version.py`](../../sheet_to_config/version.py)
 - Historial de cambios: [`CHANGELOG.md`](../../CHANGELOG.md)
 - Licencia de código abierto: [`MIT`](../../LICENSE)

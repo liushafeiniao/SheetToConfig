@@ -81,7 +81,6 @@ class ExcelConverter:
         self._current_file = ""  # 当前处理的文件，用于错误报告
         self._current_sheet = ""  # 当前处理的工作表
         self._current_row = 0  # 当前行号
-        self._client_path = ""  # 客户端路径，用于路径验证
         self._issues: List[ValidationIssue] = []
         self._issue_keys = set()
         self._asset_root = ""
@@ -215,9 +214,6 @@ class ExcelConverter:
         if not convert_func:
             raise ConverterError(f"类型 '{type_name}' 没有转换函数")
         
-        # 检查是否是引用类型（用于后续验证）
-        ref_info = type_def.get('reference_info')
-        
         # 执行转换
         try:
             if value is None or value == "":
@@ -241,8 +237,16 @@ class ExcelConverter:
             else:
                 result = convert_func(value)
             
+            has_raw_value = value is not None and (
+                not isinstance(value, str) or bool(value.strip())
+            )
+
             # 记录ID引用（客户端和服务端都记录，确保完整性）
-            if self._reference_validator and result and hasattr(self, '_current_platform'):
+            if (
+                self._reference_validator
+                and has_raw_value
+                and hasattr(self, '_current_platform')
+            ):
                 ref_info = self.type_registry.get_reference_info(type_name)
                 if ref_info:
                     reference_value = _reference_id_value(result, ref_info.get('field'))
@@ -256,11 +260,13 @@ class ExcelConverter:
                         col_name=field_name
                     )
 
-            # 路径类型验证（检查文件是否存在）
-            if result and self._client_path:
+            # Asset checks are optional and only apply to cells that actually
+            # contain a path.  Prefix/suffix conversion must not turn an empty
+            # cell into a path that is then reported as missing.
+            if self._asset_root and has_raw_value:
                 type_def = self.type_registry.get_type(type_name)
                 func_str = type_def.get('convert_func_str', '')
-                if func_str.startswith('path('):
+                if re.search(r'(^|\W)path\s*\(', func_str):
                     self._validate_path_exists(result, field_name)
 
             return result
@@ -269,7 +275,7 @@ class ExcelConverter:
 
     def _validate_path_exists(self, path_value: Any, field_name: str):
         """
-        验证路径对应的文件是否存在于客户端目录
+        验证路径对应的文件是否存在于已配置的资源根目录
 
         Args:
             path_value: 路径值（可能是字符串或列表）
@@ -1283,17 +1289,10 @@ class ExcelConverter:
         """Validate and export a batch, returning stable structured diagnostics."""
         self._issues = []
         self._issue_keys = set()
-        self._asset_root = asset_root or client_path or ''
+        self._asset_root = str(asset_root or '').strip()
         self._previous_client_path = client_path
         self._previous_server_path = server_path
         self._unreadable_workbooks = set()
-        if not asset_root and client_path:
-            self._log(
-                "Warning: assetRoot is not configured; path() checks use the "
-                "legacy client output directory"
-            )
-        elif not self._asset_root:
-            self._log("Warning: assetRoot is not configured; path() existence checks are disabled")
 
         with tempfile.TemporaryDirectory(prefix="excel2json-stage-") as temp_dir:
             stage_client = os.path.join(temp_dir, 'client')
@@ -1394,10 +1393,7 @@ class ExcelConverter:
             }
         
         # 初始化引用验证器
-        self._reference_validator = ReferenceValidator(table_dir)
-
-        # 保存客户端路径用于路径验证
-        self._client_path = client_path
+        self._reference_validator = ReferenceValidator(table_dir, self.type_registry)
 
         # 获取所有Excel文件
         xlsx_files = self._get_all_xlsx_files(table_dir)

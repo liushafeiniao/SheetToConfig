@@ -479,7 +479,14 @@ class ProtoSchemaParser:
     ):
         definition = registry.get_type(type_name)
         func = definition.get("convert_func_str", "") or type_name
-        base, dims = _auto_parse_conversion(func, registry)
+        try:
+            base, dims = _auto_parse_conversion(func, registry)
+        except ProtoSchemaError:
+            raise
+        except Exception as exc:
+            raise ProtoSchemaError(
+                f"字段 {sheet}.{field_name} 类型 {type_name} 无法推导Protobuf类型: {exc}"
+            ) from exc
         if base == "dict":
             raise ProtoSchemaError(
                 f"字段 {sheet}.{field_name} 类型 {type_name} 无法自动推导Protobuf结构，请增加PROTO工作表"
@@ -957,22 +964,17 @@ def _auto_parse_conversion(func: str, registry: Any = None) -> tuple[str, int]:
         if base_name in ("find_id", "find") and registry is not None:
             args = _split_auto_args(args)
             if len(args) >= 3:
-                try:
-                    referenced = registry.get_referenced_field_type(
-                        args[0].strip(), args[2].strip()
-                    )
-                    referenced = str(referenced or "str").lower()
-                    if referenced in {"int", "int32", "int64"}:
-                        return "int", 0
-                    if referenced in {"float", "double"}:
-                        return "float", 0
-                    if referenced in {"bool", "boolean"}:
-                        return "bool", 0
-                    if referenced in {"bytes", "byte"}:
-                        return "bytes", 0
+                referenced = registry.resolve_referenced_scalar_type(
+                    args[0].strip(), args[2].strip()
+                )
+                referenced = str(referenced or "str").lower()
+                if referenced in {"int", "float", "bool", "bytes"}:
+                    return referenced, 0
+                if referenced in {"str", "string"}:
                     return "str", 0
-                except Exception:
-                    pass
+                raise ProtoSchemaError(
+                    f"find_id引用目标类型无法映射到Protobuf: {referenced}"
+                )
         return ("int" if base_name in ("find_id", "find") else "path"), 0
     if base_name in ("split_dict", "dict", "award"):
         return "dict", 0

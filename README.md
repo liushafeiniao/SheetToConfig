@@ -13,7 +13,7 @@
 
 <p align="center">
   <a href="https://github.com/liushafeiniao/SheetToConfig/actions/workflows/tests.yml"><img alt="测试状态" src="https://img.shields.io/github/actions/workflow/status/liushafeiniao/SheetToConfig/tests.yml?branch=main&style=flat-square&label=tests"></a>
-  <a href="https://github.com/liushafeiniao/SheetToConfig/releases"><img alt="当前版本 1.0.0" src="https://img.shields.io/badge/version-1.0.0-00D4AA?style=flat-square"></a>
+  <a href="https://github.com/liushafeiniao/SheetToConfig/releases"><img alt="当前版本 1.0.1" src="https://img.shields.io/badge/version-1.0.1-00D4AA?style=flat-square"></a>
   <img alt="Windows 稳定版；macOS 源码与 CI" src="https://img.shields.io/badge/platform-Windows%20stable%20%7C%20macOS%20source%2FCI-24292F?style=flat-square">
   <a href="LICENSE"><img alt="MIT License" src="https://img.shields.io/badge/license-MIT-24292F?style=flat-square"></a>
 </p>
@@ -168,7 +168,7 @@ find(file_prefix, display_label, field)
 - `file_prefix` 按文件名前缀定位目标 `.xlsx` 工作簿。
 - `display_label` 只用于显示，不用于选择工作表。
 - `field` 匹配目标字段；从第 5 行开始读取数据。
-- 空值按目标字段真实类型处理；缺表、缺字段或缺 ID 会校验失败。
+- 生成 Protobuf 时，`find_id` 按引用目标的最终标量类型确定字段类型；缺表、缺字段或缺 ID 会校验失败。
 - 列表引用按分隔符展平后验证；失败时整批取消并保留旧产物。
 - `find` 是 `find_id` 的同义简写，其他名称不是公开能力。
 
@@ -206,7 +206,7 @@ find(file_prefix, display_label, field)
 </details>
 
 <details>
-<summary><strong>Protobuf 导出</strong> — <code>.pb</code> 即生成同名 <code>.proto</code>，超集协议与破坏性变更开关</summary>
+<summary><strong>Protobuf 导出</strong> — <code>.pb</code> 即生成同名 <code>.proto</code>，超集协议与 schema 重建</summary>
 
 在 `CODE` 工作表中把 `File` 写成 `.pb` 文件名，即可生成同名 `.proto` 与 `.pb`：
 
@@ -221,7 +221,7 @@ QuestConfig.pb
 - 客户端与服务端共享同一份字段超集 `.proto`，各自的 `.pb` 只包含该端允许的数据。
 - 配置 C# 输出目录后，可调用 `protoc` 生成 C# 文件。
 
-桌面界面默认禁止破坏性协议变更：检测到不兼容的 schema 变化会直接报错。只有显式勾选「允许破坏性 Protobuf 协议变更」后才会允许不兼容重建，勾选即生效；发布过的协议仍应检查 `.proto` diff。
+桌面端导出与「仅校验」会自动接受当前 Excel schema，并据此重建 Protobuf 协议；这不会绕过主键、类型或其他数据校验，非受管或损坏的 `.proto` 仍会被拒绝。发布过的协议仍应检查 `.proto` diff。底层 Python API 的 `allow_breaking_proto_change` 默认仍为 `False`，保持严格的兼容性检查。
 
 </details>
 
@@ -234,7 +234,7 @@ QuestConfig.pb
 | 客户端路径 | 是 | 客户端配置与 manifest 输出目录 |
 | 服务端路径 | 是 | 服务端配置与 manifest 输出目录 |
 | C# 输出路径 | 否 | `protoc` 生成的 C# 类型目录 |
-| 资源根目录 | 否 | 校验 `path()` 结果未越界且文件真实存在；留空时回退到客户端输出目录继续校验，并给出警告 |
+| 资源根目录 | 否 | 配置后校验已填写的 `path()` 是否未越界且文件真实存在；留空时完全跳过 `path()` 存在性检查，不回退也不提示警告 |
 | 同步目录 | 否 | 「同步」操作的目标目录 |
 
 源码位于父项目的 `GitHub` 子目录且同级存在 `LocalData` 时，本地状态写入该目录；其他源码环境使用系统用户配置目录；Windows EXE 默认写入可执行文件目录。可以用环境变量覆盖：
@@ -330,6 +330,6 @@ tests/                        自动化测试
 
 ## 版本与许可证
 
-- 当前版本：[`sheet_to_config/version.py`](sheet_to_config/version.py) 中的 `1.0.0`
+- 当前版本：[`sheet_to_config/version.py`](sheet_to_config/version.py) 中的 `1.0.1`
 - 变更记录：[`CHANGELOG.md`](CHANGELOG.md)
 - 开源许可证：[`MIT`](LICENSE)

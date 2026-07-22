@@ -8,7 +8,7 @@
 """
 
 import os
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any, Callable, Dict, List, Optional, Set, Tuple
 from openpyxl import load_workbook
 
 from .expression import (
@@ -18,6 +18,12 @@ from .expression import (
 
 class UndefinedTypeError(Exception):
     """未定义类型错误"""
+    pass
+
+
+class _ReferenceTypeCycle(Exception):
+    """Internal marker for a cycle made only of find/find_id edges."""
+
     pass
 
 
@@ -37,6 +43,10 @@ class TypeRegistry:
         """
         self.table_dir = table_dir
         self._types: Dict[str, Dict[str, Any]] = {}
+        self._converter_states: Dict[str, str] = {}
+        self._reference_field_cache: Dict[
+            Tuple[str, str], Tuple[Optional[str], Tuple[Tuple[str, str], ...]]
+        ] = {}
         self._load_type_definition()
     
     def _load_type_definition(self):
@@ -87,51 +97,83 @@ class TypeRegistry:
         if 'convert' not in col_indices:
             col_indices['convert'] = 1
         
-        # 解析类型定义
-        for row in rows[1:]:
-            values = [cell.value for cell in row]
-            
-            if len(values) <= col_indices['name']:
-                continue
-            
-            type_name = str(values[col_indices['name']]).strip() if values[col_indices['name']] else None
-            if not type_name:
-                continue
-            
-            convert_func_str = ""
-            if 'convert' in col_indices and len(values) > col_indices['convert']:
-                convert_func_str = str(values[col_indices['convert']]).strip() if values[col_indices['convert']] else ""
-            
-            # Parse while the workbook is still open, but always release the
-            # Windows file handle before propagating a bad definition.
-            try:
-                convert_func = self._parse_convert_func(convert_func_str)
-            except Exception:
-                wb.close()
-                raise
-            
-            self._types[type_name] = {
-                'name': type_name,
-                'convert_func_str': convert_func_str,
-                'convert_func': convert_func
-            }
+        try:
+            # Register raw definitions first so aliases may safely reference a
+            # definition that appears later in the workbook.
+            for row in rows[1:]:
+                values = [cell.value for cell in row]
 
-        wb.close()
-        
-        if not self._types:
-            raise UndefinedTypeError("TypeDefinition.xlsx中没有找到有效的类型定义")
+                if len(values) <= col_indices['name']:
+                    continue
 
-        # bytes was added with Protobuf support. Keep existing projects working
-        # even when their already-created TypeDefinition.xlsx predates this type.
-        if 'bytes' not in self._types:
-            from .types import TypeConverter
-            self._types['bytes'] = {
-                'name': 'bytes',
-                'convert_func_str': 'bytes',
-                'convert_func': TypeConverter.to_bytes,
-            }
+                type_name = (
+                    str(values[col_indices['name']]).strip()
+                    if values[col_indices['name']] else None
+                )
+                if not type_name:
+                    continue
+
+                convert_func_str = ""
+                if 'convert' in col_indices and len(values) > col_indices['convert']:
+                    convert_func_str = (
+                        str(values[col_indices['convert']]).strip()
+                        if values[col_indices['convert']] else ""
+                    )
+
+                self._types[type_name] = {
+                    'name': type_name,
+                    'convert_func_str': convert_func_str,
+                    'convert_func': None,
+                }
+
+            if not self._types:
+                raise UndefinedTypeError("TypeDefinition.xlsx中没有找到有效的类型定义")
+
+            # bytes was added with Protobuf support. Keep existing projects
+            # working when TypeDefinition.xlsx predates this type.
+            if 'bytes' not in self._types:
+                self._types['bytes'] = {
+                    'name': 'bytes',
+                    'convert_func_str': 'bytes',
+                    'convert_func': None,
+                }
+
+            for type_name in list(self._types):
+                self._ensure_converter(type_name, [])
+        finally:
+            wb.close()
     
-    def _parse_convert_func(self, func_str: str) -> Callable:
+    def _ensure_converter(self, type_name: str, chain: List[str]) -> Callable:
+        """Build one converter with DFS cycle detection."""
+        if type_name not in self._types:
+            raise UndefinedTypeError(f"类型别名引用了未定义类型: {type_name}")
+
+        state = self._converter_states.get(type_name, 'UNSEEN')
+        if state == 'DONE':
+            return self._types[type_name]['convert_func']
+        if state == 'BUILDING':
+            cycle_start = chain.index(type_name) if type_name in chain else 0
+            cycle = chain[cycle_start:] + [type_name]
+            raise UndefinedTypeError("类型别名存在循环: " + " -> ".join(cycle))
+
+        self._converter_states[type_name] = 'BUILDING'
+        current_chain = chain + [type_name]
+        try:
+            converter = self._parse_convert_func(
+                self._types[type_name].get('convert_func_str', ''),
+                current_chain,
+            )
+        except Exception:
+            self._types[type_name]['convert_func'] = None
+            self._converter_states[type_name] = 'UNSEEN'
+            raise
+
+        self._types[type_name]['convert_func'] = converter
+        self._converter_states[type_name] = 'DONE'
+        return converter
+
+    def _parse_convert_func(self, func_str: str,
+                            build_chain: Optional[List[str]] = None) -> Callable:
         """
         解析转换函数字符串
         
@@ -154,9 +196,9 @@ class TypeRegistry:
             raise UndefinedTypeError(f"转换函数语法错误 '{func_str}': {exc}") from exc
         if expression.is_call:
             return self._create_convert_func(
-                expression.name, list(expression.args), func_str
+                expression.name, list(expression.args), func_str, build_chain
             )
-        return self._create_simple_convert_func(expression.name)
+        return self._create_simple_convert_func(expression.name, build_chain)
     
     def _parse_args(self, args_str: str) -> List[Any]:
         """解析函数参数"""
@@ -172,8 +214,9 @@ class TypeRegistry:
                 f"转换函数 {func_name} 参数数量错误: 需要{expected}个，实际{len(args)}个"
             )
     
-    def _create_convert_func(self, func_name: str, args: List[str], 
-                             full_func_str: str = '') -> Callable:
+    def _create_convert_func(self, func_name: str, args: List[str],
+                             full_func_str: str = '',
+                             build_chain: Optional[List[str]] = None) -> Callable:
         """创建转换函数"""
         from .types import TypeConverter
         
@@ -226,18 +269,9 @@ class TypeRegistry:
             self._require_arg_count(func_name, args, 1)
             if args:
                 inner_type = args[0]
-                # 检查是否是嵌套函数调用（如 find(...)）
-                if '(' in inner_type and inner_type.endswith(')'):
-                    # 递归解析嵌套函数
-                    inner_func = self._parse_convert_func(inner_type)
-                    # 一维列表默认使用 # 分隔
-                    sep = separator if separator else '#'
-                    return lambda v: TypeConverter.split_list(v, inner_func, sep)
-                else:
-                    # 简单类型（int/string/float）
-                    # 一维列表默认使用 # 分隔
-                    sep = separator if separator else '#'
-                    return lambda v: TypeConverter.split_list(v, inner_type, sep)
+                inner_func = self._parse_convert_func(inner_type, build_chain)
+                sep = separator if separator else '#'
+                return lambda v: TypeConverter.split_list(v, inner_func, sep)
             return TypeConverter.split_list
         elif func_name == 'split_list_ex':
             self._require_arg_count(func_name, args, 2)
@@ -250,40 +284,14 @@ class TypeRegistry:
         elif func_name == 'split_list2':
             self._require_arg_count(func_name, args, 1)
             if args:
-                inner_type = args[0]
-                # 检查是否是嵌套函数调用
-                if '(' in inner_type and inner_type.endswith(')'):
-                    inner_func = self._parse_convert_func(inner_type)
-                    return lambda v: TypeConverter.split_list2(v, inner_func)
-                else:
-                    # 简单类型（int/string/float）
-                    type_map = {
-                        'int': TypeConverter.to_int,
-                        'float': TypeConverter.to_float,
-                        'string': TypeConverter.to_string,
-                        'str': TypeConverter.to_string,
-                    }
-                    converter = type_map.get(inner_type, TypeConverter.to_string)
-                    return lambda v: TypeConverter.split_list2(v, converter)
+                inner_func = self._parse_convert_func(args[0], build_chain)
+                return lambda v: TypeConverter.split_list2(v, inner_func)
             return TypeConverter.split_list2
         elif func_name == 'split_list3':
             self._require_arg_count(func_name, args, 1)
             if args:
-                inner_type = args[0]
-                # 检查是否是嵌套函数调用
-                if '(' in inner_type and inner_type.endswith(')'):
-                    inner_func = self._parse_convert_func(inner_type)
-                    return lambda v: TypeConverter.split_list3(v, inner_func)
-                else:
-                    # 简单类型（int/string/float）
-                    type_map = {
-                        'int': TypeConverter.to_int,
-                        'float': TypeConverter.to_float,
-                        'string': TypeConverter.to_string,
-                        'str': TypeConverter.to_string,
-                    }
-                    converter = type_map.get(inner_type, TypeConverter.to_string)
-                    return lambda v: TypeConverter.split_list3(v, converter)
+                inner_func = self._parse_convert_func(args[0], build_chain)
+                return lambda v: TypeConverter.split_list3(v, inner_func)
             return TypeConverter.split_list3
         elif func_name == 'split_dict':
             if not args:
@@ -302,52 +310,20 @@ class TypeRegistry:
                 field_name = field_name.strip()
                 if not field_name or any(name == field_name for name, _ in fields):
                     raise UndefinedTypeError(f"split_dict 字段名无效或重复: {field_name}")
-                fields.append((field_name, self._parse_convert_func(field_expression)))
+                fields.append((
+                    field_name,
+                    self._parse_convert_func(field_expression, build_chain),
+                ))
             return lambda v: TypeConverter.split_dict_fields(v, fields)
         elif func_name == 'find_id':
             self._require_arg_count(func_name, args, 3)
             if len(args) >= 3:
-                table_name = args[0]
-                table_desc = args[1]
-                id_field = args[2]
-
-                # 获取被引用字段的类型，用于决定空值的默认值
-                ref_type = self._get_referenced_field_type(table_name, id_field)
-
-                # 根据被引用字段的类型，创建对应的转换函数
-                if ref_type == 'int':
-                    # 引用的是int类型字段，空值返回0
-                    return lambda v: TypeConverter._convert_find_id_int(v)
-                elif ref_type in ('str', 'string'):
-                    # 引用的是string类型字段，空值返回""
-                    return lambda v: TypeConverter._convert_find_id_str(v)
-                elif ref_type == 'float':
-                    # 引用的是float类型字段，空值返回0.0
-                    return lambda v: TypeConverter._convert_find_id_float(v)
-                else:
-                    # 未知类型，使用默认处理
-                    return lambda v: TypeConverter.find_id(v, table_name, table_desc, id_field)
+                return self._create_reference_converter(*args[:3])
             return lambda v: v
         elif func_name == 'find':
             self._require_arg_count(func_name, args, 3)
-            # find 是 find_id 的简写形式，功能相同
             if len(args) >= 3:
-                table_name = args[0]
-                table_desc = args[1]
-                id_field = args[2]
-
-                # 获取被引用字段的类型
-                ref_type = self._get_referenced_field_type(table_name, id_field)
-
-                # 根据被引用字段的类型，创建对应的转换函数
-                if ref_type == 'int':
-                    return lambda v: TypeConverter._convert_find_id_int(v)
-                elif ref_type in ('str', 'string'):
-                    return lambda v: TypeConverter._convert_find_id_str(v)
-                elif ref_type == 'float':
-                    return lambda v: TypeConverter._convert_find_id_float(v)
-                else:
-                    return lambda v: TypeConverter.find_id(v, table_name, table_desc, id_field)
+                return self._create_reference_converter(*args[:3])
             return lambda v: v
         elif func_name == 'path':
             self._require_arg_count(func_name, args, 0, 2)
@@ -362,8 +338,28 @@ class TypeRegistry:
             return lambda v: TypeConverter.split_list(v, 'string', '#')
         else:
             raise UndefinedTypeError(f"未知的转换函数: {func_name}")
-    
-    def _create_simple_convert_func(self, type_name: str) -> Callable:
+
+    def _create_reference_converter(self, table_name: str, display_label: str,
+                                    id_field: str) -> Callable:
+        """Preserve legacy scalar/dict shape while typing the referenced ID."""
+        from .types import TypeConverter
+
+        legacy_type = self.get_legacy_referenced_field_type(table_name, id_field)
+        scalar_type = self.resolve_referenced_scalar_type(table_name, id_field)
+        if legacy_type == 'int':
+            return TypeConverter._convert_find_id_int
+        if legacy_type in ('str', 'string'):
+            return TypeConverter._convert_find_id_str
+        if legacy_type == 'float':
+            return TypeConverter._convert_find_id_float
+
+        scalar_converter = self.scalar_converter(scalar_type)
+        return lambda value: TypeConverter.find_id_typed(
+            value, table_name, display_label, id_field, scalar_converter
+        )
+
+    def _create_simple_convert_func(self, type_name: str,
+                                    build_chain: Optional[List[str]] = None) -> Callable:
         """创建简单类型转换函数"""
         from .types import TypeConverter
         
@@ -381,6 +377,8 @@ class TypeRegistry:
         }
         
         converter = type_map.get(type_name)
+        if converter is None and type_name in self._types:
+            return self._ensure_converter(type_name, build_chain or [])
         if converter is None:
             raise UndefinedTypeError(f"未知的转换函数: {type_name}")
         return converter
@@ -399,49 +397,62 @@ class TypeRegistry:
         Returns:
             {'table': 表名, 'field': 字段名} 或 None
         """
-        if type_name not in self._types:
+        try:
+            base_type = parse_field_type(str(type_name)).base_type
+        except ExpressionSyntaxError:
             return None
-        
-        func_str = self._types[type_name].get('convert_func_str', '')
-        if not func_str:
+        return self._reference_info_from_type(base_type, set())
+
+    def _reference_info_from_type(
+        self, type_name: str, visited: Set[str]
+    ) -> Optional[Dict[str, str]]:
+        """Follow aliases and nested converters to the first find/find_id."""
+        if type_name in visited or type_name not in self._types:
             return None
-        
-        # 解析 find/find_id 调用
-        # 格式: find(table,desc,field) 或 find_id(table,desc,field)
-        for func_name in ['find(', 'find_id(']:
-            if func_name in func_str:
-                # 提取 find(...) 的参数
-                start = func_str.find(func_name)
-                if start == -1:
-                    continue
-                
-                # 找到匹配的括号
-                paren_start = func_str.find('(', start)
-                if paren_start == -1:
-                    continue
-                
-                # 寻找匹配的右括号
-                depth = 1
-                paren_end = paren_start + 1
-                while paren_end < len(func_str) and depth > 0:
-                    if func_str[paren_end] == '(':
-                        depth += 1
-                    elif func_str[paren_end] == ')':
-                        depth -= 1
-                    paren_end += 1
-                
-                if depth == 0:
-                    # 提取参数
-                    args_str = func_str[paren_start + 1:paren_end - 1]
-                    args = [
-                        item for item in split_top_level(args_str, (',',)) if item
-                    ]
-                    if len(args) >= 3:
-                        return {
-                            'table': args[0],
-                            'field': args[2]
-                        }
-        
+        definition = self._types[type_name].get('convert_func_str', '')
+        if not definition:
+            return None
+        return self._reference_info_from_conversion(
+            definition, visited | {type_name}
+        )
+
+    def _reference_info_from_conversion(
+        self, conversion: str, visited: Set[str]
+    ) -> Optional[Dict[str, str]]:
+        try:
+            expression = parse_call(conversion)
+        except ExpressionSyntaxError:
+            return None
+        if not expression.is_call:
+            return self._reference_info_from_type(expression.name, visited)
+
+        name = expression.name.split('[', 1)[0].strip().lower()
+        args = list(expression.args)
+        if name in ('find', 'find_id'):
+            if len(args) < 3:
+                return None
+            return {'table': args[0], 'field': args[2]}
+
+        nested_expressions: List[str] = []
+        if name in ('split_list', 'split_list2', 'split_list3') and args:
+            nested_expressions.append(args[0])
+        elif name == 'split_list_ex' and len(args) >= 2:
+            nested_expressions.append(args[1])
+        elif name == 'split_dict':
+            for definition in args:
+                if ':' in definition and ' ' not in definition:
+                    _, nested = definition.split(':', 1)
+                else:
+                    try:
+                        nested, _ = definition.rsplit(None, 1)
+                    except ValueError:
+                        continue
+                nested_expressions.append(nested)
+
+        for nested in nested_expressions:
+            reference = self._reference_info_from_conversion(nested, visited)
+            if reference:
+                return reference
         return None
     
     def get_type(self, type_name: str) -> Dict[str, Any]:
@@ -472,153 +483,283 @@ class TypeRegistry:
         return list(self._types.keys())
 
     def get_referenced_type(self, type_name: str) -> Optional[str]:
-        """
-        获取引用类型的基础类型
-
-        例如：如果类型名是 'itemId'，转换函数是 'find_id(item,物品表,id)'
-              而 item.xlsx 的 id 字段类型是 'string'
-              则返回 'string'
-
-        Args:
-            type_name: 类型名称，如 'itemId'
-
-        Returns:
-            基础类型名称，如 'int', 'string' 等，如果不是引用类型则返回 None
-        """
-        if type_name not in self._types:
+        """Return the canonical scalar for a direct find/find_id definition."""
+        definition = self._types.get(type_name)
+        if not definition:
             return None
-
-        convert_func_str = self._types[type_name].get('convert_func_str', '')
-
-        # 检查是否是 find_id / find 类型
-        if not (convert_func_str.startswith('find_id(') or convert_func_str.startswith('find(')):
-            return None
-
-        # 解析 find_id 参数: find_id(item,物品表,id) -> ['item', '物品表', 'id']
-        import re
-        match = re.search(r'find(?:_id)?\s*\(\s*([^,]+)\s*,\s*([^,]+)\s*,\s*([^)]+)\s*\)', convert_func_str)
-        if not match:
-            return None
-
-        ref_table = match.group(1).strip()  # 如 'item'
-        ref_field = match.group(3).strip()  # 如 'id'
-
-        # 查找被引用的 xlsx 文件
-        import os
-        table_dir = self.table_dir
-        ref_file_path = None
-
-        for filename in os.listdir(table_dir):
-            if filename.lower().startswith(ref_table.lower()) and filename.endswith('.xlsx'):
-                ref_file_path = os.path.join(table_dir, filename)
-                break
-
-        if not ref_file_path:
-            return None
-
-        # 读取被引用文件，查找被引用字段的类型
         try:
-            from openpyxl import load_workbook
-            wb = load_workbook(ref_file_path, read_only=True, data_only=True)
+            expression = parse_call(definition.get('convert_func_str', ''))
+        except ExpressionSyntaxError:
+            return None
+        if not expression.is_call or expression.name.lower() not in ('find', 'find_id'):
+            return None
+        if len(expression.args) < 3:
+            return None
+        return self.resolve_referenced_scalar_type(
+            expression.args[0], expression.args[2]
+        )
 
-            ref_field_type = None
-            for sheet_name in wb.sheetnames:
-                if sheet_name.upper() == 'CODE':
+    def find_reference_workbook(self, table_name: str) -> Optional[str]:
+        """Resolve a reference workbook exactly, then by deterministic prefix."""
+        exact = os.path.join(self.table_dir, f"{table_name}.xlsx")
+        if os.path.isfile(exact):
+            return exact
+        lowered = str(table_name).casefold()
+        for filename in sorted(os.listdir(self.table_dir), key=str.casefold):
+            if filename.casefold().startswith(lowered) and filename.casefold().endswith('.xlsx'):
+                candidate = os.path.join(self.table_dir, filename)
+                if os.path.isfile(candidate):
+                    return candidate
+        return None
+
+    def _referenced_field_candidates(
+        self, table_name: str, field_name: str
+    ) -> Tuple[Optional[str], List[Tuple[str, str]]]:
+        """Return every matching (sheet, raw type) in the target workbook."""
+        cache_key = (
+            str(table_name).strip().casefold(),
+            str(field_name).strip().casefold(),
+        )
+        cached = self._reference_field_cache.get(cache_key)
+        if cached is not None:
+            workbook_path, candidates = cached
+            return workbook_path, list(candidates)
+
+        workbook_path = self.find_reference_workbook(table_name)
+        if not workbook_path:
+            self._reference_field_cache[cache_key] = (None, ())
+            return None, []
+
+        workbook = load_workbook(workbook_path, read_only=True, data_only=True)
+        candidates: List[Tuple[str, str]] = []
+        wanted = str(field_name).strip()
+        try:
+            for sheet_name in workbook.sheetnames:
+                if sheet_name.upper() in ('CODE', 'PROTO'):
                     continue
-
-                ws = wb[sheet_name]
-                rows = list(ws.rows)
+                worksheet = workbook[sheet_name]
+                rows = list(worksheet.iter_rows(
+                    min_row=1, max_row=2, values_only=True
+                ))
                 if len(rows) < 2:
                     continue
+                names, types = rows
+                for index, value in enumerate(names):
+                    if str(value or '').strip() != wanted:
+                        continue
+                    raw_type = types[index] if index < len(types) else None
+                    if raw_type is not None and str(raw_type).strip():
+                        candidates.append((sheet_name, str(raw_type).strip()))
+        finally:
+            workbook.close()
+        self._reference_field_cache[cache_key] = (
+            workbook_path, tuple(candidates)
+        )
+        return workbook_path, candidates
 
-                names_row = rows[0]
-                types_row = rows[1]
-
-                for col_idx, cell in enumerate(names_row):
-                    if cell.value and str(cell.value).strip() == ref_field:
-                        if col_idx < len(types_row) and types_row[col_idx].value:
-                            ref_field_type = str(types_row[col_idx].value).strip()
-                            break
-
-                if ref_field_type:
-                    break
-
-            wb.close()
-
-            if not ref_field_type:
-                return None
-
-            # 解析被引用字段的类型（去掉约束，如 "int+notEmpty()" -> "int"）
-            ref_base_type = parse_field_type(ref_field_type).base_type
-
-            return ref_base_type
-
-        except Exception:
-            return None
-
-    def _get_referenced_field_type(self, table_name: str, field_name: str) -> str:
-        """
-        获取被引用字段的类型
-
-        例如：table_name='item', field_name='id' -> 查找 item.xlsx 的 id 字段类型 -> 'int'
-
-        Args:
-            table_name: 表名（不含扩展名）
-            field_name: 字段名
-
-        Returns:
-            字段类型，如 'int', 'string', 'float'，未找到返回 'str'
-        """
-        import os
-        from openpyxl import load_workbook
-
-        # 查找被引用的 xlsx 文件
-        ref_file_path = None
-        for filename in os.listdir(self.table_dir):
-            if filename.lower().startswith(table_name.lower()) and filename.endswith('.xlsx'):
-                ref_file_path = os.path.join(self.table_dir, filename)
-                break
-
-        if not ref_file_path:
-            return 'str'  # 默认返回字符串类型
-
+    def get_legacy_referenced_field_type(self, table_name: str,
+                                         field_name: str) -> str:
+        """Return the old first-match type used only to preserve output shape."""
+        _, candidates = self._referenced_field_candidates(table_name, field_name)
+        if not candidates:
+            return 'str'
         try:
-            wb = load_workbook(ref_file_path, read_only=True, data_only=True)
-
-            ref_field_type = None
-            for sheet_name in wb.sheetnames:
-                if sheet_name.upper() == 'CODE':
-                    continue
-
-                ws = wb[sheet_name]
-                rows = list(ws.rows)
-                if len(rows) < 2:
-                    continue
-
-                names_row = rows[0]
-                types_row = rows[1]
-
-                for col_idx, cell in enumerate(names_row):
-                    if cell.value and str(cell.value).strip() == field_name:
-                        if col_idx < len(types_row) and types_row[col_idx].value:
-                            ref_field_type = str(types_row[col_idx].value).strip()
-                            break
-
-                if ref_field_type:
-                    break
-
-            wb.close()
-
-            if not ref_field_type:
-                return 'str'
-
-            # 解析类型（去掉约束）
-            base_type = parse_field_type(ref_field_type).base_type
-            return base_type
-
-        except Exception:
+            return parse_field_type(candidates[0][1]).base_type
+        except ExpressionSyntaxError:
             return 'str'
 
+    @staticmethod
+    def scalar_converter(scalar_type: str) -> Callable:
+        """Return the identity conversion for one canonical scalar type."""
+        from .types import TypeConverter
+
+        converters = {
+            'int': TypeConverter.to_int,
+            'str': TypeConverter.to_string,
+            'string': TypeConverter.to_string,
+            'float': TypeConverter.to_float,
+            'bool': TypeConverter.to_bool,
+            'bytes': TypeConverter.to_bytes,
+        }
+        converter = converters.get(str(scalar_type).lower())
+        if converter is None:
+            raise UndefinedTypeError(
+                f"find_id引用目标不是支持的标量类型: {scalar_type}"
+            )
+        return converter
+
+    def resolve_scalar_type(self, type_name: str) -> str:
+        """Resolve a TypeDefinition name to a canonical scalar type."""
+        return self._resolve_type_scalar(type_name, (), ())
+
+    def _resolve_type_scalar(
+        self, type_name: str, type_stack: Tuple[str, ...],
+        reference_stack: Tuple[Tuple[str, str], ...],
+    ) -> str:
+        try:
+            base_type = parse_field_type(str(type_name)).base_type
+        except ExpressionSyntaxError as exc:
+            raise UndefinedTypeError(f"字段类型表达式无效 '{type_name}': {exc}") from exc
+
+        normalized = {
+            'int': 'int', 'str': 'str', 'string': 'str',
+            'float': 'float', 'bool': 'bool', 'bytes': 'bytes',
+        }.get(base_type.lower())
+        if normalized:
+            return normalized
+        if base_type in type_stack:
+            start = type_stack.index(base_type)
+            cycle = type_stack[start:] + (base_type,)
+            raise UndefinedTypeError("类型别名存在循环: " + " -> ".join(cycle))
+
+        definition = self._types.get(base_type)
+        if not definition:
+            raise UndefinedTypeError(f"find_id引用目标使用了未定义类型: {base_type}")
+        return self._resolve_conversion_scalar(
+            definition.get('convert_func_str', ''),
+            type_stack + (base_type,), reference_stack,
+        )
+
+    def _resolve_conversion_scalar(
+        self, expression_text: str, type_stack: Tuple[str, ...],
+        reference_stack: Tuple[Tuple[str, str], ...],
+    ) -> str:
+        try:
+            expression = parse_call(expression_text)
+        except ExpressionSyntaxError as exc:
+            raise UndefinedTypeError(
+                f"转换函数语法错误 '{expression_text}': {exc}"
+            ) from exc
+
+        if not expression.is_call:
+            return self._resolve_type_scalar(
+                expression.name, type_stack, reference_stack
+            )
+
+        name = expression.name.split('[', 1)[0].lower()
+        args = list(expression.args)
+        if name in ('int', 'str', 'string', 'float', 'bool', 'bytes'):
+            self._require_arg_count(name, args, 0)
+            return 'str' if name in ('str', 'string') else name
+        if name == 'enum':
+            if not args:
+                raise UndefinedTypeError("enum缺少基础标量类型")
+            return self._resolve_type_scalar(args[0], type_stack, reference_stack)
+        if name == 'path':
+            self._require_arg_count(name, args, 0, 2)
+            return 'str'
+        if name in ('find', 'find_id'):
+            self._require_arg_count(name, args, 3)
+            return self._resolve_referenced_scalar_type(
+                args[0], args[2], type_stack, reference_stack
+            )
+        if name in ('split_list', 'split_list2', 'split_list3', 'split_list_ex',
+                    'split_dict', 'dict', 'award', 'commonstringparamforsplit'):
+            raise UndefinedTypeError(
+                f"find_id引用目标必须是标量，不能使用 {expression.name}"
+            )
+        if name == 'text_key':
+            raise UndefinedTypeError(
+                "find_id引用目标不能使用text_key：它没有唯一的静态标量类型"
+            )
+        raise UndefinedTypeError(f"find_id引用目标使用了未知转换函数: {expression.name}")
+
+    def resolve_referenced_scalar_type(self, table_name: str,
+                                       field_name: str) -> str:
+        """Resolve a find/find_id target field to its final scalar type."""
+        return self._resolve_referenced_scalar_type(
+            table_name, field_name, (), ()
+        )
+
+    def _resolve_referenced_scalar_type(
+        self, table_name: str, field_name: str,
+        type_stack: Tuple[str, ...],
+        reference_stack: Tuple[Tuple[str, str], ...],
+    ) -> str:
+        workbook_path, candidates = self._referenced_field_candidates(
+            table_name, field_name
+        )
+        if not workbook_path or not candidates:
+            # ReferenceValidator owns the actionable missing-table/field error.
+            return 'str'
+
+        key = (
+            os.path.normcase(os.path.abspath(workbook_path)),
+            str(field_name).casefold(),
+        )
+        if key in reference_stack:
+            raise _ReferenceTypeCycle(
+                f"find_id引用形成循环: {table_name}.{field_name}"
+            )
+        next_references = reference_stack + (key,)
+
+        resolved: Set[str] = set()
+        cycles: List[str] = []
+        errors: List[str] = []
+        reference_candidates: List[Tuple[str, str]] = []
+        for sheet_name, raw_type in candidates:
+            if self.get_reference_info(raw_type):
+                reference_candidates.append((sheet_name, raw_type))
+                continue
+            try:
+                resolved.add(self._resolve_type_scalar(
+                    raw_type, type_stack, next_references
+                ))
+            except _ReferenceTypeCycle as exc:
+                cycles.append(f"{sheet_name}: {exc}")
+            except UndefinedTypeError as exc:
+                errors.append(f"{sheet_name}: {exc}")
+
+        target = f"{os.path.basename(workbook_path)}.{field_name}"
+        if len(resolved) > 1:
+            raise UndefinedTypeError(
+                f"引用目标 {target} 在多个工作表中的类型冲突: "
+                + ", ".join(sorted(resolved))
+            )
+        if resolved:
+            return next(iter(resolved))
+        if errors:
+            raise UndefinedTypeError(
+                f"无法确定引用目标 {target} 的标量类型: " + "; ".join(errors)
+            )
+        if reference_candidates:
+            # Preserve the wire/conversion scalar through a reference-only
+            # chain. ReferenceValidator still rejects the target because these
+            # columns never contribute legal IDs.
+            fallback_resolved: Set[str] = set()
+            fallback_cycles: List[str] = []
+            fallback_errors: List[str] = []
+            for sheet_name, raw_type in reference_candidates:
+                try:
+                    fallback_resolved.add(self._resolve_type_scalar(
+                        raw_type, type_stack, next_references
+                    ))
+                except _ReferenceTypeCycle as exc:
+                    fallback_cycles.append(f"{sheet_name}: {exc}")
+                except UndefinedTypeError as exc:
+                    fallback_errors.append(f"{sheet_name}: {exc}")
+            if fallback_errors:
+                raise UndefinedTypeError(
+                    f"无法确定引用目标 {target} 的标量类型: "
+                    + "; ".join(fallback_errors)
+                )
+            if len(fallback_resolved) > 1:
+                raise UndefinedTypeError(
+                    f"引用目标 {target} 在多个工作表中的类型冲突: "
+                    + ", ".join(sorted(fallback_resolved))
+                )
+            if fallback_resolved:
+                return next(iter(fallback_resolved))
+            if fallback_cycles and len(fallback_cycles) == len(reference_candidates):
+                # Keep the historic schema fallback for a pure reference cycle;
+                # validation will still report the missing independent column.
+                return 'int'
+        if cycles and len(cycles) == len(candidates):
+            return 'int'
+        raise UndefinedTypeError(
+            f"无法确定引用目标 {target} 的标量类型"
+        )
+
     def get_referenced_field_type(self, table_name: str, field_name: str) -> str:
-        """Public reference used by Protobuf automatic type inference."""
-        return self._get_referenced_field_type(table_name, field_name)
+        """Backward-compatible public alias for final scalar inference."""
+        return self.resolve_referenced_scalar_type(table_name, field_name)

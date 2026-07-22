@@ -13,7 +13,7 @@
 
 <p align="center">
   <a href="https://github.com/liushafeiniao/SheetToConfig/actions/workflows/tests.yml"><img alt="測試狀態" src="https://img.shields.io/github/actions/workflow/status/liushafeiniao/SheetToConfig/tests.yml?branch=main&style=flat-square&label=tests"></a>
-  <a href="https://github.com/liushafeiniao/SheetToConfig/releases"><img alt="目前版本 1.0.0" src="https://img.shields.io/badge/version-1.0.0-00D4AA?style=flat-square"></a>
+  <a href="https://github.com/liushafeiniao/SheetToConfig/releases"><img alt="目前版本 1.0.1" src="https://img.shields.io/badge/version-1.0.1-00D4AA?style=flat-square"></a>
   <img alt="Windows 穩定版；macOS 原始碼與 CI" src="https://img.shields.io/badge/platform-Windows%20stable%20%7C%20macOS%20source%2FCI-24292F?style=flat-square">
   <a href="../../LICENSE"><img alt="MIT License" src="https://img.shields.io/badge/license-MIT-24292F?style=flat-square"></a>
 </p>
@@ -168,7 +168,7 @@ find(file_prefix, display_label, field)
 - `file_prefix` 依檔名前綴定位目標 `.xlsx` 活頁簿。
 - `display_label` 只用於顯示，不用於選擇工作表。
 - `field` 比對目標欄位；從第 5 列開始讀取資料。
-- 空值按目標欄位真實型別處理；缺表、缺欄位或缺 ID 會驗證失敗。
+- 產生 Protobuf 時，`find_id` 會依引用目標的最終純量型別決定欄位型別；缺表、缺欄位或缺 ID 會驗證失敗。
 - 清單引用按分隔符展平後驗證；失敗時整批取消並保留舊產物。
 - `find` 是 `find_id` 的同義簡寫，其他名稱不是公開能力。
 
@@ -206,7 +206,7 @@ find(file_prefix, display_label, field)
 </details>
 
 <details>
-<summary><strong>Protobuf 匯出</strong> — <code>.pb</code> 即產生同名 <code>.proto</code>，超集協議與破壞性變更開關</summary>
+<summary><strong>Protobuf 匯出</strong> — <code>.pb</code> 即產生同名 <code>.proto</code>，超集協議與 schema 重建</summary>
 
 在 `CODE` 工作表中把 `File` 寫成 `.pb` 檔名，即可產生同名 `.proto` 與 `.pb`：
 
@@ -221,7 +221,7 @@ QuestConfig.pb
 - 用戶端與伺服器共享同一份欄位超集 `.proto`，各自的 `.pb` 只包含該端允許的資料。
 - 設定 C# 輸出目錄後，可呼叫 `protoc` 產生 C# 檔案。
 
-桌面介面預設禁止破壞性協議變更：偵測到不相容的 schema 變化會直接報錯。只有明確勾選「允許破壞相容性的 Protobuf 結構變更」後才會允許不相容重建，勾選即生效；發佈過的協議仍應檢查 `.proto` diff。
+桌面端匯出與「僅驗證」會自動接受目前的 Excel schema，並據此重建 Protobuf 協議；這不會略過主鍵、型別或其他資料驗證，非受管或損壞的 `.proto` 仍會被拒絕。發佈過的協議仍應檢查 `.proto` diff。底層 Python API 的 `allow_breaking_proto_change` 預設仍為 `False`，維持嚴格的相容性檢查。
 
 </details>
 
@@ -234,7 +234,7 @@ QuestConfig.pb
 | 用戶端路徑 | 是 | 用戶端設定與 manifest 輸出目錄 |
 | 伺服器路徑 | 是 | 伺服器設定與 manifest 輸出目錄 |
 | C# 輸出路徑 | 否 | `protoc` 產生的 C# 型別目錄 |
-| 資源根目錄 | 否 | 驗證 `path()` 結果未越界且檔案真實存在；留空時回退到用戶端輸出目錄繼續驗證，並給出警告 |
+| 資源根目錄 | 否 | 配置後驗證已填寫的 `path()` 是否未越界且檔案真實存在；留空時完全跳過 `path()` 存在性檢查，不回退也不提示警告 |
 | 同步目錄 | 否 | 「同步」操作的目標目錄 |
 
 原始碼位於父專案的 `GitHub` 子目錄且同層存在 `LocalData` 時，本機狀態寫入該目錄；其他原始碼環境使用系統使用者設定目錄；Windows EXE 預設寫入執行檔所在目錄。可以用環境變數覆寫：
@@ -330,6 +330,6 @@ tests/                        自動化測試
 
 ## 版本與授權
 
-- 目前版本：[`sheet_to_config/version.py`](../../sheet_to_config/version.py) 中的 `1.0.0`
+- 目前版本：[`sheet_to_config/version.py`](../../sheet_to_config/version.py) 中的 `1.0.1`
 - 變更記錄：[`CHANGELOG.md`](../../CHANGELOG.md)
 - 開源授權：[`MIT`](../../LICENSE)

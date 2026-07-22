@@ -219,11 +219,13 @@ class LocalizedUiTests(unittest.TestCase):
 
         class PendingHandler:
             created = 0
+            export_calls = []
 
             def __init__(self, *args, **kwargs):
                 type(self).created += 1
 
             def export_async(self, **kwargs):
+                type(self).export_calls.append(kwargs)
                 return True
 
         window = SheetToConfigWindow()
@@ -237,11 +239,107 @@ class LocalizedUiTests(unittest.TestCase):
                 window.export_project()
 
             self.assertEqual(PendingHandler.created, 1)
+            self.assertEqual(PendingHandler.export_calls[0]["allow_breaking_proto_change"], True)
             self.assertTrue(window.export_in_progress)
             self.assertFalse(window.export_btn.isEnabled())
         finally:
             window.on_export_complete(False)
             window.close()
+
+    def test_export_handler_normalizes_optional_asset_root(self):
+        class CapturingConverter:
+            def __init__(self):
+                self.calls = []
+
+            def export_all(self, **kwargs):
+                self.calls.append(kwargs)
+                return {
+                    "success": True,
+                    "count": 0,
+                    "success_count": 0,
+                    "fail_count": 0,
+                    "issues": [],
+                    "changes": {},
+                }
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            for configured, expected in (
+                ("", ""),
+                ("   ", ""),
+                ("  C:/game/assets  ", "C:/game/assets"),
+            ):
+                with self.subTest(asset_root=configured):
+                    project = Project({
+                        "name": "Demo",
+                        "tablePath": temp_dir,
+                        "clientPath": "client",
+                        "serverPath": "server",
+                        "assetRoot": configured,
+                    })
+                    handler = ExportHandler(project)
+                    converter = CapturingConverter()
+                    handler.converter = converter
+
+                    self.assertTrue(handler.export(validation_only=True))
+                    self.assertEqual(
+                        converter.calls[0]["asset_root"], expected
+                    )
+
+    def test_export_handler_does_not_repeat_aggregate_artifact_changes(self):
+        class ConverterWithPerFileLog:
+            def __init__(self, relay):
+                self.relay = relay
+
+            def export_all(self, **kwargs):
+                self.relay("英雄.xlsx\n  [OK] Hero.pb")
+                return {
+                    "success": True,
+                    "count": 1,
+                    "success_count": 1,
+                    "fail_count": 0,
+                    "issues": [],
+                    "changes": {
+                        "client": {
+                            "added": ["Attribute.pb", "Hero.pb"],
+                            "modified": ["Skill.pb"],
+                            "removed": ["Legacy.pb"],
+                        },
+                        "server": {
+                            "added": ["ServerAdded.pb"],
+                            "modified": ["ServerModified.pb"],
+                            "removed": ["ServerRemoved.pb"],
+                        }
+                    },
+                }
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            project = Project({
+                "name": "Demo",
+                "tablePath": temp_dir,
+                "clientPath": "client",
+                "serverPath": "server",
+            })
+            logs = []
+            handler = ExportHandler(project, logs.append)
+            handler.converter = ConverterWithPerFileLog(
+                handler._relay_converter_log
+            )
+
+            self.assertTrue(handler.export())
+
+        self.assertIn("英雄.xlsx\n  [OK] Hero.pb", logs)
+        for aggregate_only_path in (
+            "Attribute.pb", "Skill.pb", "Legacy.pb", "ServerAdded.pb",
+            "ServerModified.pb", "ServerRemoved.pb",
+        ):
+            with self.subTest(path=aggregate_only_path):
+                self.assertFalse(
+                    any(aggregate_only_path in line for line in logs), logs
+                )
+        self.assertEqual(
+            handler.last_result["changes"]["client"]["added"],
+            ["Attribute.pb", "Hero.pb"],
+        )
 
 
 if __name__ == "__main__":

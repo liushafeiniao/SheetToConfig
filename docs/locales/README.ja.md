@@ -13,7 +13,7 @@
 
 <p align="center">
   <a href="https://github.com/liushafeiniao/SheetToConfig/actions/workflows/tests.yml"><img alt="テスト状況" src="https://img.shields.io/github/actions/workflow/status/liushafeiniao/SheetToConfig/tests.yml?branch=main&style=flat-square&label=tests"></a>
-  <a href="https://github.com/liushafeiniao/SheetToConfig/releases"><img alt="現在のバージョン 1.0.0" src="https://img.shields.io/badge/version-1.0.0-00D4AA?style=flat-square"></a>
+  <a href="https://github.com/liushafeiniao/SheetToConfig/releases"><img alt="現在のバージョン 1.0.1" src="https://img.shields.io/badge/version-1.0.1-00D4AA?style=flat-square"></a>
   <img alt="Windows 安定版、macOS はソースと CI" src="https://img.shields.io/badge/platform-Windows%20stable%20%7C%20macOS%20source%2FCI-24292F?style=flat-square">
   <a href="../../LICENSE"><img alt="MIT License" src="https://img.shields.io/badge/license-MIT-24292F?style=flat-square"></a>
 </p>
@@ -168,7 +168,7 @@ find(file_prefix, display_label, field)
 - `file_prefix` はファイル名プレフィックスで対象の `.xlsx` ワークブックを特定します。
 - `display_label` は表示専用で、ワークシートの選択には使われません。
 - `field` は対象フィールドと照合します。データは 5 行目から読み込みます。
-- 空値は対象フィールドの実際の型に従って処理されます。表・フィールド・ID が見つからない場合は検証に失敗します。
+- Protobuf では、`find_id` は参照先の最終的なスカラー型に基づいてフィールド型を決定します。表・フィールド・ID が見つからない場合は検証に失敗します。
 - リスト参照は区切り文字で展開してから検証します。失敗時はバッチ全体をキャンセルし、旧成果物を保持します。
 - `find` は `find_id` の同義短縮形で、それ以外の名前は公開機能ではありません。
 
@@ -206,7 +206,7 @@ find(file_prefix, display_label, field)
 </details>
 
 <details>
-<summary><strong>Protobuf エクスポート</strong> — <code>.pb</code> で同名の <code>.proto</code> を生成、スーパーセットプロトコルと破壊的変更スイッチ</summary>
+<summary><strong>Protobuf エクスポート</strong> — <code>.pb</code> で同名の <code>.proto</code> を生成、スーパーセットプロトコルと schema 再構築</summary>
 
 `CODE` ワークシートの `File` に `.pb` ファイル名を書くと、同名の `.proto` と `.pb` が生成されます：
 
@@ -221,7 +221,7 @@ QuestConfig.pb
 - クライアントとサーバーは同じフィールドのスーパーセット `.proto` を共有し、各 `.pb` にはその端で許可されたデータのみが含まれます。
 - C# 出力先を設定すると、`protoc` を呼び出して C# ファイルを生成できます。
 
-デスクトップ UI では破壊的なプロトコル変更がデフォルトで禁止されており、互換性のない schema 変更が検出されると直接エラーになります。「破壊的な Protobuf スキーマ変更を許可」を明示的にチェックした場合のみ互換性のない再構築が許可され、チェックは即時に有効になります。公開済みのプロトコルでは引き続き `.proto` の diff を確認してください。
+デスクトップのエクスポートと「検証のみ」は、現在の Excel schema を自動的に受け入れ、それに基づいて Protobuf プロトコルを再構築します。これは主キー、型、その他のデータ検証を迂回するものではなく、管理対象外または破損した `.proto` は引き続き拒否されます。公開済みのプロトコルでは `.proto` の diff を確認してください。基盤となる Python API の `allow_breaking_proto_change` は既定で `False` のままで、既定では厳格な互換性検査を維持します。
 
 </details>
 
@@ -234,7 +234,7 @@ QuestConfig.pb
 | クライアント出力先 | はい | クライアント設定と manifest の出力ディレクトリ |
 | サーバー出力先 | はい | サーバー設定と manifest の出力ディレクトリ |
 | C# 出力先 | いいえ | `protoc` が生成する C# 型のディレクトリ |
-| アセットルート | いいえ | `path()` の結果がルート外に出ず、ファイルが実在することを検証。空欄時はクライアント出力先で検証を続行し、警告を表示 |
+| アセットルート | いいえ | 設定時は、入力済みの `path()` がルート外に出ず、ファイルが実在することを検証。空欄時はすべての `path()` 存在確認をスキップし、フォールバックも警告も行いません |
 | 共有フォルダー | いいえ | 「同期」操作のコピー先ディレクトリ |
 
 ソースが親プロジェクトの `GitHub` サブディレクトリにあり、同階層に `LocalData` が存在する場合、ローカル状態はそのディレクトリに書き込まれます。その他のソース環境ではシステムのユーザー設定ディレクトリを使用し、Windows EXE はデフォルトで実行ファイルのディレクトリに書き込みます。環境変数で上書きできます：
@@ -330,6 +330,6 @@ tests/                        自動テスト
 
 ## バージョンとライセンス
 
-- 現在のバージョン：[`sheet_to_config/version.py`](../../sheet_to_config/version.py) の `1.0.0`
+- 現在のバージョン：[`sheet_to_config/version.py`](../../sheet_to_config/version.py) の `1.0.1`
 - 変更履歴：[`CHANGELOG.md`](../../CHANGELOG.md)
 - オープンソースライセンス：[`MIT`](../../LICENSE)

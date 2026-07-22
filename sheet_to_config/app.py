@@ -706,7 +706,7 @@ class SheetToConfigWindow(QMainWindow):
         dialog = ExportOptionDialog(self, self.last_export_filename, self.colors)
         if dialog.exec_():
             (
-                option, filename, allow_breaking_proto_change, validation_only
+                option, filename, _allow_breaking_proto_change, validation_only
             ) = dialog.get_result()
 
             if option == "4":
@@ -730,7 +730,10 @@ class SheetToConfigWindow(QMainWindow):
                 started = handler.export_async(
                     mode=option,
                     filename=filename,
-                    allow_breaking_proto_change=allow_breaking_proto_change,
+                    # The desktop workflow always rebuilds managed Protobuf
+                    # schemas from the current Excel definition.  The strict
+                    # flag remains available on the lower-level Python API.
+                    allow_breaking_proto_change=True,
                     export_pb=True,
                     validation_only=validation_only,
                 )

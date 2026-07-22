@@ -375,6 +375,21 @@ class TypeConverter:
         }
 
     @staticmethod
+    def find_id_typed(value: Any, table_name: str, display_field: str,
+                      id_field: str, scalar_converter: Callable) -> dict:
+        """Keep the legacy reference dictionary while typing its ID value."""
+        id_value = scalar_converter(value)
+        if value is None or (isinstance(value, str) and not value.strip()):
+            # ID must remain the first non-metadata entry because Protobuf
+            # serialization intentionally extracts it in insertion order.
+            return {id_field: id_value, display_field: ""}
+        return {
+            id_field: id_value,
+            '_table': table_name,
+            '_display_field': display_field,
+        }
+
+    @staticmethod
     def path(value: Any, *path_parts) -> str:
         """
         路径处理
@@ -388,9 +403,11 @@ class TypeConverter:
         import os
 
         if value is None:
-            value = ""
+            return ""
 
         value_str = str(value).strip()
+        if not value_str:
+            return ""
 
         # 如果没有额外参数，直接返回原值
         if not path_parts:

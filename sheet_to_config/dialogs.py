@@ -819,12 +819,11 @@ class ExportOptionDialog(QDialog):
         self.selected_option = None
         self.filename = ""
         self.validation_only = False
-        self.breaking_proto_checkbox = QCheckBox(tr('dialog.allow_breaking_proto'))
-        self.breaking_proto_checkbox.setChecked(False)
-        self.breaking_proto_checkbox.setToolTip(tr('dialog.allow_breaking_proto_hint'))
         self.validation_only_checkbox = QCheckBox()
         self.validation_only_checkbox.setVisible(False)
-        self.allow_breaking_proto_change = False
+        # Desktop exports always rebuild managed schemas from the current Excel
+        # definition.  The lower-level Python API keeps its strict opt-in flag.
+        self.allow_breaking_proto_change = True
         self.setWindowTitle(tr('dialog.export_title'))
         self.setMinimumSize(480, 520)
         # 移除问号按钮
@@ -884,9 +883,6 @@ class ExportOptionDialog(QDialog):
         export_btn.setObjectName("primary")
         export_btn.clicked.connect(self.export_specific)
         layout.addWidget(export_btn)
-
-        layout.addSpacing(4)
-        layout.addWidget(self.breaking_proto_checkbox)
 
         layout.addStretch()
         self.setLayout(layout)
@@ -972,7 +968,6 @@ class ExportOptionDialog(QDialog):
         self.accept()
 
     def get_result(self):
-        self.allow_breaking_proto_change = self.breaking_proto_checkbox.isChecked()
         return (
             self.selected_option, self.filename,
             self.allow_breaking_proto_change, self.validation_only,
