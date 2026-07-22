@@ -36,7 +36,9 @@
 
 ## 빠른 시작
 
-SheetToConfig는 Windows를 주요 지원 환경으로 하며 Apple Silicon 및 Intel macOS에서도 지속적으로 테스트합니다. macOS에서는 의존성을 설치한 뒤 `./run.sh`로 소스 버전을 실행할 수 있습니다.
+SheetToConfig는 Windows를 주요 지원 환경으로 하며 Apple Silicon 및 Intel macOS에서도 지속적으로 테스트합니다. macOS에서는 의존성을 설치한 뒤 `./run.sh`로 소스 버전을 실행할 수 있습니다. 안정 DMG는 Developer ID 서명과 Apple 공증이 성공한 경우에만 게시됩니다.
+
+실험적 DMG는 롤링 [macos-preview](https://github.com/liushafeiniao/SheetToConfig/releases/tag/macos-preview) GitHub Prerelease에서 받을 수 있습니다. Apple M 시리즈는 `arm64`, Intel Mac은 `x64`를 선택하세요. 이 DMG는 서명 및 공증되지 않았고 Apple의 검증도 받지 않았습니다. 리포지토리와 해당 소스 커밋을 신뢰할 때만 사용하세요. 회사나 학교에서 관리하는 Mac은 실행을 차단할 수 있습니다. 첫 실행이 실패하면 Apple이 지원하는 「시스템 설정 → 개인정보 보호 및 보안 → 그래도 열기」를 사용하세요. 링크가 아직 생성되지 않았다면 공개 미리보기가 없는 상태이므로 위의 소스 실행 방법을 사용하세요.
 
 ```powershell
 py -3.12 -m venv .venv
@@ -203,7 +205,7 @@ python build.py
 
 성공하면 `dist/SheetToConfig.exe`가 생성됩니다. C# 생성에는 `PATH`의 `protoc` 또는 `PROTOC` 환경 변수가 필요합니다.
 
-macOS에서는 `./build.sh`로 `.app`을 만들고 `python scripts/package_macos.py --unsigned`로 내부 검증용 DMG를 생성할 수 있습니다. 안정 릴리스 DMG는 서명과 Apple 공증이 성공한 경우에만 게시됩니다.
+macOS에서는 `./build.sh`로 `.app`을 만들고 `python scripts/package_macos.py --unsigned`로 DMG를 생성할 수 있습니다. 유지 관리자는 Mac을 소유하지 않아도 공개 GitHub Actions macOS runner에서 빌드할 수 있지만, 클라우드 빌드는 실제 기기 인수 테스트를 대체하지 않습니다. 서명되지 않은 DMG는 공개 실험용 `macos-preview`로 게시할 수 있지만 안정판, 공식판, 서명 또는 공증된 릴리스로 표시해서는 안 됩니다. 안정 DMG에는 Developer ID 서명과 Apple 공증이 필요합니다.
 
 ## 호환성과 제한
 

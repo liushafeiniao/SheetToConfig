@@ -64,6 +64,8 @@ python -m pip install -r requirements.txt
 ./run.sh
 ```
 
+To try a macOS preview, download an experimental DMG from the rolling [macos-preview](https://github.com/liushafeiniao/SheetToConfig/releases/tag/macos-preview) GitHub prerelease: choose `arm64` for an Apple M-series Mac and `x64` for an Intel Mac. These DMGs are unsigned, unnotarized, and not Apple-verified; use them only when you trust the repository and the source commit. Managed company or school Macs may block them. After the first failed launch, use Apple-supported **System Settings → Privacy & Security → Open Anyway**. If the link has not been created yet, no public preview is available; run from source with the steps above instead.
+
 ### Your first export
 
 1. Click New Project (`新建项目`) and configure the workbook, client output, and server output directories.
@@ -269,7 +271,7 @@ python3.12 -m pip install -r requirements-dev.txt
 python scripts/package_macos.py --unsigned
 ```
 
-Build on the target macOS architecture. The outputs are `dist/SheetToConfig.app` and a DMG. Unsigned DMGs are internal test artifacts only; stable releases use Developer ID signing and Apple notarization in GitHub Actions. See [`RELEASING.md`](RELEASING.md) for release and secret setup.
+Build on the target macOS architecture. The outputs are `dist/SheetToConfig.app` and a DMG. Maintainers can also build on public GitHub Actions macOS runners without owning a Mac, but cloud builds do not replace real-device acceptance testing. Unsigned DMGs may be public experimental `macos-preview` prereleases, but must not be described as stable, official, signed, or notarized releases. Stable releases require Developer ID signing and Apple notarization. See [`RELEASING.md`](RELEASING.md) for release and secret setup.
 
 Generating C# configuration types additionally requires `protoc` on `PATH`, or a `PROTOC` environment variable pointing to it.
 

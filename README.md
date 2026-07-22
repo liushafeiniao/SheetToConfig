@@ -77,6 +77,8 @@ python -m pip install -r requirements.txt
 ./run.sh
 ```
 
+如需尝试 macOS 预览版，可从滚动的 [macos-preview](https://github.com/liushafeiniao/SheetToConfig/releases/tag/macos-preview) GitHub Prerelease 下载实验性 DMG：Apple M 系列请选择 `arm64`，Intel Mac 请选择 `x64`。这些 DMG 未签名、未公证，也未经 Apple 验证；仅在信任仓库及对应源码提交时使用，企业或学校管理的 Mac 可能会阻止启动。首次启动失败后，请使用 Apple 支持的「系统设置 → 隐私与安全性 → 仍要打开」。如果链接尚未创建，说明当前没有公开预览包，请按上述步骤从源码运行。
+
 ### 第一次导出
 
 1. 点击「新建项目」，设置表格目录、客户端输出目录和服务端输出目录。
@@ -282,7 +284,7 @@ python3.12 -m pip install -r requirements-dev.txt
 python scripts/package_macos.py --unsigned
 ```
 
-构建必须在对应架构的 macOS 上执行，输出为 `dist/SheetToConfig.app` 和 DMG。未签名 DMG 只用于内部验证；稳定 Release 通过 GitHub Actions 完成 Developer ID 签名和 Apple 公证。完整发布与密钥配置见 [`RELEASING.md`](RELEASING.md)。
+构建应在目标 macOS 架构上执行，输出为 `dist/SheetToConfig.app` 和 DMG。维护者也可以使用公开的 GitHub Actions macOS runner 构建，无需自有 Mac；但云端构建不能替代真实设备验收。未签名 DMG 可作为公开的实验性 `macos-preview` 预览发布，但不能描述为稳定版、官方版、已签名或已公证的发布物。稳定 Release 必须完成 Developer ID 签名和 Apple 公证。完整发布与密钥配置见 [`RELEASING.md`](RELEASING.md)。
 
 如需生成 C# 配置类，还必须安装 `protoc` 并加入 `PATH`，或设置 `PROTOC` 环境变量。
 

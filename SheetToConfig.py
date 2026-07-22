@@ -967,11 +967,11 @@ class SheetToConfigWindow(QMainWindow):
         """Show a catalog-backed confirmation with translated button labels."""
         box = QMessageBox(self)
         box.setIcon(QMessageBox.Question)
-        box.setWindowTitle(tr(title_key))
         box.setText(tr(message_key, **params))
         yes_button = box.addButton(tr('dialog.yes'), QMessageBox.AcceptRole)
         no_button = box.addButton(tr('dialog.no'), QMessageBox.RejectRole)
         box.setDefaultButton(no_button)
+        box.setWindowTitle(tr(title_key))
         box.exec_()
         return box.clickedButton() is yes_button
 

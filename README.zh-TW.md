@@ -36,7 +36,9 @@
 
 ## 快速開始
 
-SheetToConfig 以 Windows 為主要支援平台，並在 Apple Silicon 與 Intel macOS 上持續測試。macOS 安裝相依套件後可執行 `./run.sh` 啟動原始碼版本。
+SheetToConfig 以 Windows 為主要支援平台，並在 Apple Silicon 與 Intel macOS 上持續測試。macOS 安裝相依套件後可執行 `./run.sh` 啟動原始碼版本。穩定版 DMG 僅會在完成 Developer ID 簽署與 Apple 公證後發布。
+
+實驗性 DMG 可從滾動的 [macos-preview](https://github.com/liushafeiniao/SheetToConfig/releases/tag/macos-preview) GitHub Prerelease 取得：Apple M 系列請選 `arm64`，Intel Mac 請選 `x64`。這些 DMG 未簽署、未公證，也未經 Apple 驗證；僅在信任儲存庫及對應原始碼提交時使用。公司或學校管理的 Mac 可能會阻擋它們。首次啟動失敗後，請使用 Apple 支援的「系統設定 → 隱私權與安全性 → 仍要打開」。若連結尚未建立，表示目前沒有公開預覽包，請依照上述步驟從原始碼執行。
 
 ```powershell
 py -3.12 -m venv .venv
@@ -203,7 +205,7 @@ python build.py
 
 成功後會產生 `dist/SheetToConfig.exe`。C# 產生需要將 `protoc` 加入 `PATH`，或設定 `PROTOC` 環境變數。
 
-macOS 可執行 `./build.sh` 產生 `.app`，再以 `python scripts/package_macos.py --unsigned` 建立內部驗證用 DMG。穩定版 DMG 只會在簽署與 Apple 公證成功後發布。
+macOS 可執行 `./build.sh` 產生 `.app`，再以 `python scripts/package_macos.py --unsigned` 建立 DMG。維護者也可透過公開 GitHub Actions macOS runner 建置，不必擁有 Mac；但雲端建置不能取代真實裝置驗收。未簽署 DMG 可作為公開實驗性 `macos-preview` 預覽發布，但不能描述為穩定版、官方版、已簽署或已公證的發布物。穩定版 DMG 必須完成 Developer ID 簽署與 Apple 公證。
 
 ## 相容性與限制
 

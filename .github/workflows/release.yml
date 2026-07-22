@@ -11,6 +11,11 @@ on:
         required: true
         type: boolean
         default: false
+      publish_unsigned_macos_preview:
+        description: Publish a rolling unsigned macOS prerelease from the default branch
+        required: true
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -30,6 +35,26 @@ jobs:
       version: ${{ steps.metadata.outputs.version }}
       tag: ${{ steps.metadata.outputs.tag }}
     steps:
+      - name: Reject incompatible manual release modes
+        if: >-
+          github.event_name == 'workflow_dispatch' &&
+          inputs.sign_macos &&
+          inputs.publish_unsigned_macos_preview
+        shell: bash
+        run: |
+          echo "::error title=Incompatible release modes::Choose either signed macOS validation or unsigned macOS preview publishing, not both."
+          exit 1
+      - name: Require the default branch for unsigned preview publishing
+        if: >-
+          github.event_name == 'workflow_dispatch' &&
+          inputs.publish_unsigned_macos_preview &&
+          github.ref_name != github.event.repository.default_branch
+        env:
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+        shell: bash
+        run: |
+          echo "::error title=Unsigned preview must use the default branch::Run this workflow from ${DEFAULT_BRANCH}."
+          exit 1
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
@@ -139,6 +164,130 @@ jobs:
           name: macos-unsigned-${{ matrix.arch }}
           path: artifacts/*
           if-no-files-found: error
+
+  publish-macos-preview:
+    name: Publish rolling unsigned macOS preview
+    if: >-
+      github.event_name == 'workflow_dispatch' &&
+      inputs.publish_unsigned_macos_preview &&
+      !inputs.sign_macos &&
+      github.ref_name == github.event.repository.default_branch
+    needs: [validate, build-macos]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    concurrency:
+      group: macos-preview
+      cancel-in-progress: false
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: macos-unsigned-arm64
+          path: unsigned/arm64
+      - uses: actions/download-artifact@v4
+        with:
+          name: macos-unsigned-x64
+          path: unsigned/x64
+      - name: Verify and stage exact unsigned preview assets
+        env:
+          VERSION: ${{ needs.validate.outputs.version }}
+          SOURCE_COMMIT: ${{ github.sha }}
+          WORKFLOW_RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          expected=(
+            "unsigned/arm64/SheetToConfig-v${VERSION}-macos-arm64.app.zip"
+            "unsigned/arm64/SheetToConfig-v${VERSION}-macos-arm64-unsigned.dmg"
+            "unsigned/x64/SheetToConfig-v${VERSION}-macos-x64.app.zip"
+            "unsigned/x64/SheetToConfig-v${VERSION}-macos-x64-unsigned.dmg"
+          )
+
+          printf '%s\n' "${expected[@]}" | sort > "${RUNNER_TEMP}/expected-macos-preview-files.txt"
+          find unsigned -type f -print | sort > "${RUNNER_TEMP}/actual-macos-preview-files.txt"
+          if ! diff -u \
+            "${RUNNER_TEMP}/expected-macos-preview-files.txt" \
+            "${RUNNER_TEMP}/actual-macos-preview-files.txt"; then
+            echo "::error title=Unexpected macOS preview assets::Expected exactly one app ZIP and one unsigned DMG for each architecture."
+            exit 1
+          fi
+
+          mkdir artifacts
+          for asset in "${expected[@]}"; do
+            cp "${asset}" artifacts/
+          done
+
+          {
+            printf 'version=%s\n' "${VERSION}"
+            printf 'source_commit=%s\n' "${SOURCE_COMMIT}"
+            printf 'workflow_run=%s\n' "${WORKFLOW_RUN_URL}"
+            printf 'signature_status=unsigned\n'
+            printf 'notarization_status=not_notarized\n'
+            printf 'release_channel=macos-preview\n'
+          } > artifacts/MACOS-PREVIEW-METADATA.txt
+
+          release_files=(
+            "SheetToConfig-v${VERSION}-macos-arm64.app.zip"
+            "SheetToConfig-v${VERSION}-macos-arm64-unsigned.dmg"
+            "SheetToConfig-v${VERSION}-macos-x64.app.zip"
+            "SheetToConfig-v${VERSION}-macos-x64-unsigned.dmg"
+            "MACOS-PREVIEW-METADATA.txt"
+          )
+          (
+            cd artifacts
+            sha256sum "${release_files[@]}" | sort > SHA256SUMS-macos-unsigned.txt
+            sha256sum --check SHA256SUMS-macos-unsigned.txt
+          )
+
+          test "$(find artifacts -maxdepth 1 -type f | wc -l)" -eq 6
+      - name: Create rolling unsigned macOS prerelease
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PREVIEW_TAG: macos-preview
+          VERSION: ${{ needs.validate.outputs.version }}
+          SOURCE_COMMIT: ${{ github.sha }}
+          WORKFLOW_RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          notes_file="${RUNNER_TEMP}/macos-preview-notes.md"
+          {
+            printf '# macOS Preview (Unsigned)\n\n'
+            printf '> **Warning:** These experimental builds are unsigned, not notarized, and not verified by Apple. Use them only if you trust this repository and the source commit below.\n\n'
+            printf -- '- Apple Silicon (M-series): download the `arm64` DMG.\n'
+            printf -- '- Intel processor: download the `x64` DMG.\n\n'
+            printf 'After macOS blocks the first launch, open **System Settings → Privacy & Security**, find SheetToConfig, and choose **Open Anyway**. Company- or school-managed Macs may prevent this override.\n\n'
+            printf 'Running from source remains the fallback when the preview cannot be opened.\n\n'
+            printf 'Version: `%s`  \n' "${VERSION}"
+            printf 'Source commit: [`%s`](%s/%s/commit/%s)  \n' "${SOURCE_COMMIT}" "${GITHUB_SERVER_URL}" "${GITHUB_REPOSITORY}" "${SOURCE_COMMIT}"
+            printf 'Workflow run: %s\n' "${WORKFLOW_RUN_URL}"
+          } > "${notes_file}"
+
+          if gh release view "${PREVIEW_TAG}" >/dev/null 2>&1; then
+            gh release delete "${PREVIEW_TAG}" --yes --cleanup-tag
+          fi
+          if gh api --silent \
+            "repos/${GITHUB_REPOSITORY}/git/ref/tags/${PREVIEW_TAG}" >/dev/null 2>&1; then
+            gh api --silent --method DELETE \
+              "repos/${GITHUB_REPOSITORY}/git/refs/tags/${PREVIEW_TAG}"
+          fi
+
+          gh release create "${PREVIEW_TAG}" \
+            "artifacts/SheetToConfig-v${VERSION}-macos-arm64.app.zip" \
+            "artifacts/SheetToConfig-v${VERSION}-macos-arm64-unsigned.dmg" \
+            "artifacts/SheetToConfig-v${VERSION}-macos-x64.app.zip" \
+            "artifacts/SheetToConfig-v${VERSION}-macos-x64-unsigned.dmg" \
+            "artifacts/MACOS-PREVIEW-METADATA.txt" \
+            "artifacts/SHA256SUMS-macos-unsigned.txt" \
+            --target "${SOURCE_COMMIT}" \
+            --title "SheetToConfig macOS Preview v${VERSION} (Unsigned)" \
+            --notes-file "${notes_file}" \
+            --prerelease
+
+          test "$(gh release view "${PREVIEW_TAG}" --json isPrerelease --jq '.isPrerelease')" = "true"
+          test "$(gh api "repos/${GITHUB_REPOSITORY}/git/ref/tags/${PREVIEW_TAG}" --jq '.object.sha')" = "${SOURCE_COMMIT}"
 
   sign-macos:
     name: Sign and notarize macOS (${{ matrix.arch }})

@@ -36,7 +36,9 @@
 
 ## Inicio rápido
 
-Windows es la plataforma principal. SheetToConfig también se prueba continuamente en macOS Apple Silicon e Intel. En macOS, instala las dependencias y ejecuta la versión fuente con `./run.sh`.
+Windows es la plataforma principal. SheetToConfig también se prueba continuamente en macOS Apple Silicon e Intel. En macOS, instala las dependencias y ejecuta la versión fuente con `./run.sh`. Un DMG estable se publica solo tras completar la firma Developer ID y la notarización de Apple.
+
+Puedes probar un DMG experimental desde la prerelease continua de GitHub [macos-preview](https://github.com/liushafeiniao/SheetToConfig/releases/tag/macos-preview): elige `arm64` para un Mac con serie M de Apple y `x64` para un Mac Intel. Estos DMG no están firmados ni notarizados, y Apple no los ha verificado; úsalos solo si confías en el repositorio y en el commit de origen. Los Mac administrados por una empresa o escuela pueden bloquearlos. Tras el primer fallo de inicio, usa la opción compatible con Apple «Configuración del Sistema → Privacidad y seguridad → Abrir de todos modos». Si el enlace aún no existe, no hay una vista previa pública; usa los pasos anteriores para ejecutarlo desde el código fuente.
 
 ```powershell
 py -3.12 -m venv .venv
@@ -203,7 +205,7 @@ python build.py
 
 El resultado es `dist/SheetToConfig.exe`. Para generar C# necesitas `protoc` en `PATH` o la variable `PROTOC`.
 
-En macOS, `./build.sh` genera la aplicación y `python scripts/package_macos.py --unsigned` crea un DMG para verificación interna. El DMG estable solo se publica tras una firma y notarización de Apple correctas.
+En macOS, `./build.sh` genera la aplicación y `python scripts/package_macos.py --unsigned` crea un DMG. Las personas mantenedoras también pueden compilar en runners públicos macOS de GitHub Actions sin tener un Mac, pero la compilación en la nube no sustituye las pruebas de aceptación en dispositivos reales. Los DMG sin firma pueden publicarse como vistas previas experimentales `macos-preview`, pero no deben presentarse como versiones estables, oficiales, firmadas ni notarizadas. Los DMG estables requieren firma Developer ID y notarización de Apple.
 
 ## Compatibilidad y límites
 

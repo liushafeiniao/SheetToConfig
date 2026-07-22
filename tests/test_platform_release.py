@@ -97,6 +97,89 @@ class ReleaseWorkflowPolicyTests(unittest.TestCase):
         )
         self.assertNotIn("inputs.sign_macos", publish_job)
 
+    def test_unsigned_preview_is_opt_in_and_rejects_unsafe_dispatches(self):
+        dispatch = self.workflow.split("  workflow_dispatch:", 1)[1].split(
+            "\n\npermissions:", 1
+        )[0]
+        self.assertIn("publish_unsigned_macos_preview:", dispatch)
+        preview_input = dispatch.split(
+            "publish_unsigned_macos_preview:", 1
+        )[1]
+        self.assertIn("type: boolean", preview_input)
+        self.assertIn("default: false", preview_input)
+
+        validate_job = self._job_block("validate", "test")
+        self.assertIn("Reject incompatible manual release modes", validate_job)
+        self.assertIn("inputs.sign_macos", validate_job)
+        self.assertIn("inputs.publish_unsigned_macos_preview", validate_job)
+        self.assertIn("Require the default branch", validate_job)
+        self.assertIn(
+            "github.ref_name != github.event.repository.default_branch",
+            validate_job,
+        )
+
+    def test_unsigned_preview_is_isolated_from_stable_releases(self):
+        workflow_header = self.workflow.split("\njobs:", 1)[0]
+        self.assertIn("permissions:\n  contents: read", workflow_header)
+
+        preview_job = self._job_block("publish-macos-preview", "sign-macos")
+        self.assertIn("github.event_name == 'workflow_dispatch'", preview_job)
+        self.assertIn("inputs.publish_unsigned_macos_preview", preview_job)
+        self.assertIn("!inputs.sign_macos", preview_job)
+        self.assertIn(
+            "github.ref_name == github.event.repository.default_branch",
+            preview_job,
+        )
+        self.assertIn("permissions:\n      contents: write", preview_job)
+        self.assertIn("group: macos-preview", preview_job)
+        self.assertIn("cancel-in-progress: false", preview_job)
+        self.assertNotIn("APPLE_CERTIFICATE", preview_job)
+
+        publish_job = self._job_block("publish")
+        self.assertIn("permissions:\n      contents: write", publish_job)
+        self.assertIn("startsWith(github.ref, 'refs/tags/v')", publish_job)
+        self.assertNotIn("macos-unsigned-", publish_job)
+
+    def test_unsigned_preview_validates_exact_assets_before_remote_mutation(self):
+        preview_job = self._job_block("publish-macos-preview", "sign-macos")
+        for expected in (
+            "macos-unsigned-arm64",
+            "macos-unsigned-x64",
+            "macos-arm64.app.zip",
+            "macos-arm64-unsigned.dmg",
+            "macos-x64.app.zip",
+            "macos-x64-unsigned.dmg",
+        ):
+            self.assertIn(expected, preview_job)
+
+        verify_position = preview_job.index(
+            "Verify and stage exact unsigned preview assets"
+        )
+        mutation_position = preview_job.index(
+            "Create rolling unsigned macOS prerelease"
+        )
+        self.assertLess(verify_position, mutation_position)
+        self.assertIn("diff -u", preview_job)
+        self.assertIn("MACOS-PREVIEW-METADATA.txt", preview_job)
+        self.assertIn("source_commit=%s", preview_job)
+        self.assertIn("SHA256SUMS-macos-unsigned.txt", preview_job)
+        self.assertIn("sha256sum --check", preview_job)
+
+    def test_unsigned_preview_replaces_only_its_exact_prerelease(self):
+        preview_job = self._job_block("publish-macos-preview", "sign-macos")
+        self.assertIn("PREVIEW_TAG: macos-preview", preview_job)
+        self.assertIn('--prerelease', preview_job)
+        self.assertIn(
+            'gh release delete "${PREVIEW_TAG}" --yes --cleanup-tag',
+            preview_job,
+        )
+        self.assertIn(
+            'git/refs/tags/${PREVIEW_TAG}',
+            preview_job,
+        )
+        self.assertIn('--target "${SOURCE_COMMIT}"', preview_job)
+        self.assertNotIn('PREVIEW_TAG: v', preview_job)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -14,6 +14,7 @@
 - Windows、Apple Silicon macOS 与 Intel macOS 的 GitHub Actions 测试矩阵
 - Windows EXE、macOS APP/DMG、SHA-256 与 GitHub Release 自动化流程
 - Apple Developer ID 签名与公证接口；未配置凭据时仅生成内部测试产物
+- 可选的 `macos-preview` 滚动预发布：公开提供未签名 ARM64/x64 DMG、源提交元数据和 SHA-256，并与签名稳定版本严格隔离
 
 ### 兼容性
 - 使用 Qt 桌面服务跨平台打开文件夹
