@@ -43,7 +43,7 @@
   "donate.alipay": "Alipay",
   "donate.wechat": "WeChat Pay",
   "donate.missing": "Payment code unavailable",
-  "donate.footer": "Thanks to everyone who uses SheetToConfig ❤",
+  "donate.footer": "Thanks to everyone who uses SheetToConfig ♥",
   "guide.quick_start": "Quick start",
   "guide.references": "find_id / find references",
   "guide.reference_contract": "Use find_id(file_prefix, display_label, field), or its find alias, to validate a value against another workbook. The display label is metadata only; the field is matched in non-CODE sheets from row 5 onward. Missing tables, fields, or values fail the workbook and preserve previous outputs.",

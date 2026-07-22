@@ -43,7 +43,7 @@
   "donate.alipay": "Alipay",
   "donate.wechat": "WeChat Pay",
   "donate.missing": "결제 코드 없음",
-  "donate.footer": "SheetToConfig를 사용해 주시는 모든 분께 감사드립니다 ❤",
+  "donate.footer": "SheetToConfig를 사용해 주시는 모든 분께 감사드립니다 ♥",
   "guide.quick_start": "빠른 시작",
   "guide.references": "find_id / find 참조",
   "guide.reference_contract": "find_id(file_prefix, display_label, field) 또는 find 별칭으로 다른 워크북의 값을 검증합니다. display_label은 표시용이며 field는 CODE가 아닌 시트에서 5행부터 검색합니다. 표·필드·값이 없으면 내보내기에 실패하고 기존 결과를 보존합니다.",

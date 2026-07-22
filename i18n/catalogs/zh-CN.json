@@ -43,7 +43,7 @@
   "donate.alipay": "支付宝",
   "donate.wechat": "微信支付",
   "donate.missing": "收款码不可用",
-  "donate.footer": "感谢每一位使用 SheetToConfig 的你 ❤",
+  "donate.footer": "感谢每一位使用 SheetToConfig 的你 ♥",
   "guide.quick_start": "快速上手",
   "guide.references": "find_id / find 引用类型",
   "guide.reference_contract": "使用 find_id(file_prefix, display_label, field)，或同义简写 find，验证值是否存在于其他工作簿。display_label 只用于显示；field 会在非 CODE 工作表中从第 5 行开始匹配。目标表、字段或值不存在时，该工作簿失败并保留旧产物。",

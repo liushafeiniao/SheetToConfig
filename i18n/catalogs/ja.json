@@ -43,7 +43,7 @@
   "donate.alipay": "Alipay",
   "donate.wechat": "WeChat Pay",
   "donate.missing": "決済コードを利用できません",
-  "donate.footer": "Thanks to everyone who uses SheetToConfig ❤",
+  "donate.footer": "Thanks to everyone who uses SheetToConfig ♥",
   "guide.quick_start": "クイックスタート",
   "guide.references": "find_id / find 参照",
   "guide.reference_contract": "find_id(file_prefix, display_label, field)、または find の別名で別のブックの値を検証します。display_label は表示用で、field は CODE 以外のシートを5行目から検索します。表・フィールド・値がない場合は出力に失敗し、既存の成果物を保持します。",

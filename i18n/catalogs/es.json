@@ -43,7 +43,7 @@
   "donate.alipay": "Alipay",
   "donate.wechat": "WeChat Pay",
   "donate.missing": "Código de pago no disponible",
-  "donate.footer": "Gracias a todas las personas que usan SheetToConfig ❤",
+  "donate.footer": "Gracias a todas las personas que usan SheetToConfig ♥",
   "guide.quick_start": "Inicio rápido",
   "guide.references": "Referencias find_id / find",
   "guide.reference_contract": "Usa find_id(file_prefix, display_label, field), o su alias find, para validar un valor en otro libro. display_label solo es metadato; field se busca en hojas distintas de CODE desde la fila 5. Si falta la tabla, el campo o el valor, falla el libro y se conservan las salidas anteriores.",

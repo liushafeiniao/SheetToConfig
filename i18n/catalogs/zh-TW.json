@@ -43,7 +43,7 @@
   "donate.alipay": "Alipay",
   "donate.wechat": "微信支付",
   "donate.missing": "收款碼無法使用",
-  "donate.footer": "感謝每一位使用 SheetToConfig 的你 ❤",
+  "donate.footer": "感謝每一位使用 SheetToConfig 的你 ♥",
   "guide.quick_start": "快速開始",
   "guide.references": "find_id / find 參照",
   "guide.reference_contract": "使用 find_id(file_prefix, display_label, field)，或同義簡寫 find，驗證值是否存在於其他活頁簿。display_label 僅供顯示；field 會在非 CODE 工作表中從第 5 列開始比對。找不到資料表、欄位或值時，該活頁簿匯出失敗並保留舊產物。",

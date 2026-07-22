@@ -41,6 +41,17 @@ class AppPathsTests(unittest.TestCase):
                 Path(temp_dir) / "SheetToConfig", app_paths._canonical_data_dir()
             )
 
+    def test_source_clone_name_does_not_control_data_location(self):
+        with tempfile.TemporaryDirectory() as temp_dir, patch.object(
+            app_paths.sys, "frozen", False, create=True
+        ), patch.object(app_paths.sys, "platform", "win32"), patch.object(
+            app_paths, "__file__", str(Path(temp_dir) / "renamed-clone" / "app_paths.py")
+        ), patch.dict(os.environ, {"APPDATA": str(Path(temp_dir) / "AppData")}, clear=False):
+            self.assertEqual(
+                Path(temp_dir) / "AppData" / "SheetToConfig",
+                app_paths._canonical_data_dir(),
+            )
+
 
 if __name__ == "__main__":
     unittest.main()

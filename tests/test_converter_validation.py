@@ -355,6 +355,24 @@ class ConverterValidationTests(unittest.TestCase):
             )
             self.assertIn("='99'", issues[0]["message"])
 
+    def test_corrupt_workbook_is_read_and_reported_once(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            tables = root / "tables"
+            tables.mkdir()
+            (tables / "Broken.xlsx").write_bytes(b"not an xlsx")
+
+            result = ExcelConverter().export_all(
+                str(tables), str(root / "client"), str(root / "server"), "c"
+            )
+
+            read_errors = [
+                issue for issue in result["issues"]
+                if issue["code"] == "WORKBOOK_READ_ERROR"
+            ]
+            self.assertEqual(len(read_errors), 1, result["issues"])
+            self.assertNotIn("MISSING_CODE", {issue["code"] for issue in result["issues"]})
+
 
 if __name__ == "__main__":
     unittest.main()

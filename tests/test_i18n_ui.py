@@ -158,6 +158,90 @@ class LocalizedUiTests(unittest.TestCase):
                 if locale_id in ("en", "es", "ko"):
                     self.assertNotIn("引用", message)
 
+    def test_structured_export_issue_keeps_actionable_core_detail(self):
+        issue = {
+            "code": "CONVERSION_ERROR",
+            "field": "count",
+            "rawValue": "oops",
+            "message": "A.xlsx/Item!B7 的实际值是 'oops'，请填写整数。",
+        }
+
+        message = ExportHandler._localized_issue_message(issue)
+
+        self.assertIn(i18n.tr("issue.conversion_error", field="count"), message)
+        self.assertIn("A.xlsx/Item!B7", message)
+        self.assertIn("oops", message)
+        self.assertIn("请填写整数", message)
+
+    def test_log_levels_use_stable_markers_in_every_locale(self):
+        for locale_id in i18n.SUPPORTED_LOCALES:
+            with self.subTest(locale=locale_id):
+                i18n._current_locale = locale_id
+                self.assertEqual(
+                    SheetToConfigWindow._log_level(None, "[12:00:00] [ERROR] text"),
+                    "error",
+                )
+                self.assertEqual(
+                    SheetToConfigWindow._log_level(None, "[12:00:00] [WARNING] text"),
+                    "warning",
+                )
+                self.assertEqual(
+                    SheetToConfigWindow._log_level(None, "[12:00:00] [SUCCESS] text"),
+                    "success",
+                )
+
+    def test_language_write_failure_is_caught_and_keeps_current_locale(self):
+        window = SheetToConfigWindow()
+        current = i18n._current_locale
+        target = next(item for item in i18n.SUPPORTED_LOCALES if item != current)
+        try:
+            with patch("SheetToConfig.get_locale", return_value=current), patch(
+                "SheetToConfig.set_locale", side_effect=PermissionError("read-only")
+            ), patch("SheetToConfig.QMessageBox.warning") as warning:
+                window.change_language(target)
+
+            warning.assert_called_once()
+            self.assertEqual(i18n._current_locale, current)
+        finally:
+            window.close()
+
+    def test_window_prevents_a_second_export_while_one_is_running(self):
+        class AcceptedDialog:
+            def __init__(self, *args, **kwargs):
+                pass
+
+            def exec_(self):
+                return True
+
+            def get_result(self):
+                return "1", "", False, False
+
+        class PendingHandler:
+            created = 0
+
+            def __init__(self, *args, **kwargs):
+                type(self).created += 1
+
+            def export_async(self, **kwargs):
+                return True
+
+        window = SheetToConfigWindow()
+        window.current_project = Project({"name": "Demo"})
+        window.enable_buttons()
+        try:
+            with patch("SheetToConfig.ExportOptionDialog", AcceptedDialog), patch(
+                "SheetToConfig.ExportHandlerAsync", PendingHandler
+            ):
+                window.export_project()
+                window.export_project()
+
+            self.assertEqual(PendingHandler.created, 1)
+            self.assertTrue(window.export_in_progress)
+            self.assertFalse(window.export_btn.isEnabled())
+        finally:
+            window.on_export_complete(False)
+            window.close()
+
 
 if __name__ == "__main__":
     unittest.main()

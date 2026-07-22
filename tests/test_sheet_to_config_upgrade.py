@@ -91,8 +91,10 @@ class SheetToConfigUpgradeTests(unittest.TestCase):
             original_rows = workbook["CODE"].max_row
             workbook.save(path)
             workbook.close()
+            original_bytes = path.read_bytes()
 
             TypeDefinitionTemplate.ensure_exists(str(table_dir), locale="es")
+            self.assertEqual(original_bytes, path.read_bytes())
             workbook = load_workbook(path)
             rows = list(workbook["CODE"].values)
             self.assertIn(("custom", "string", "keep me"), rows)
