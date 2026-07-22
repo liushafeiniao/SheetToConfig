@@ -22,7 +22,12 @@ class GithubTextTestResult(unittest.TextTestResult):
         detail = self._exc_info_to_string(error, test)
         title = _escape_command(f"{label}: {test.id()}")
         message = _escape_command(detail[-8000:])
-        print(f"::error title={title}::{message}", flush=True)
+        module = test.__class__.__module__.replace('.', '/')
+        path = f"{module}.py" if module.startswith("tests/") else ".github/workflows/tests.yml"
+        print(
+            f"::error file={path},line=1,title={title}::{message}",
+            flush=True,
+        )
 
     def addFailure(self, test, err):
         super().addFailure(test, err)
@@ -44,6 +49,13 @@ def main() -> int:
         verbosity=2,
         resultclass=GithubTextTestResult,
     ).run(suite)
+    if os.environ.get("GITHUB_ACTIONS") == "true" and not result.wasSuccessful():
+        failed = [test.id() for test, _ in result.failures + result.errors]
+        message = _escape_command("; ".join(failed)[-8000:])
+        print(
+            f"::error file=.github/workflows/tests.yml,line=46,title=Unittest suite failed::{message}",
+            flush=True,
+        )
     return 0 if result.wasSuccessful() else 1
 
 
