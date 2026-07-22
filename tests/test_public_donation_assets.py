@@ -102,10 +102,29 @@ class PublicDonationAssetCheckerTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "expected donation files"):
             check(self.repository, self.private_dir, invalid, [], [], [])
 
-    def test_public_checkout_has_no_donation_images(self):
+    def test_public_tree_has_no_donation_images(self):
         donation_dir = ROOT / "sheet_to_config" / "assets" / "donate"
-        self.assertFalse((donation_dir / "alipay.png").exists())
-        self.assertFalse((donation_dir / "wechat.png").exists())
+        tracked = subprocess.run(
+            [
+                "git", "ls-tree", "-r", "--name-only", "HEAD", "--",
+                "sheet_to_config/assets/donate",
+            ],
+            cwd=ROOT,
+            check=True,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+        ).stdout.splitlines()
+        for name in ("alipay.png", "wechat.png"):
+            public_path = f"sheet_to_config/assets/donate/{name}"
+            self.assertNotIn(public_path, tracked)
+            if (donation_dir / name).exists():
+                ignored = subprocess.run(
+                    ["git", "check-ignore", "--quiet", public_path],
+                    cwd=ROOT,
+                    check=False,
+                )
+                self.assertEqual(0, ignored.returncode)
         ignore = (ROOT / ".gitignore").read_text(encoding="utf-8")
         self.assertIn("sheet_to_config/assets/donate/*", ignore)
         self.assertIn("!sheet_to_config/assets/donate/README.txt", ignore)
