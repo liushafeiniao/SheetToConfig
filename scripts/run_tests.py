@@ -37,6 +37,11 @@ class GithubTextTestResult(unittest.TextTestResult):
         super().addError(test, err)
         self._annotate("Test error", test, err)
 
+    def addSubTest(self, test, subtest, outcome):
+        super().addSubTest(test, subtest, outcome)
+        if outcome is not None:
+            self._annotate("Subtest failure", subtest, outcome)
+
 
 def main() -> int:
     if str(ROOT) not in sys.path:
