@@ -436,7 +436,7 @@ class SheetToConfigWindow(QMainWindow):
         if not text or text == '-':
             return
         QApplication.clipboard().setText(text)
-        self.log(tr('log.copied', value=text))
+        self.log(tr('log.copied', value=text), level='success')
 
     def apply_styles(self):
         """应用样式（唯一来源）"""
@@ -492,7 +492,7 @@ class SheetToConfigWindow(QMainWindow):
                 ids.append(project.id)
         success, msg = self.project_manager.reorder_projects(ids)
         if success:
-            self.log(tr('log.order_updated'))
+            self.log(tr('log.order_updated'), level='success')
 
     def show_project_menu(self, pos):
         """项目列表右键菜单"""
@@ -563,9 +563,12 @@ class SheetToConfigWindow(QMainWindow):
         success, msg = self.project_manager.move_project(self.current_project.id, direction)
         if success:
             self.load_projects(select_id=self.current_project.id)
-            self.log(tr('log.project_moved_up' if direction == 'up' else 'log.project_moved_down'))
+            self.log(
+                tr('log.project_moved_up' if direction == 'up' else 'log.project_moved_down'),
+                level='success',
+            )
         else:
-            self.log(tr('log.warning_detail', detail=msg))
+            self.log(tr('log.warning_detail', detail=msg), level='warning')
 
     def on_project_selected(self, item):
         """选择项目"""
@@ -630,7 +633,7 @@ class SheetToConfigWindow(QMainWindow):
             success, msg = self.project_manager.add_project(project)
             if success:
                 self.load_projects()
-                self.log(tr('log.success_detail', detail=msg))
+                self.log(tr('log.success_detail', detail=msg), level='success')
             else:
                 QMessageBox.warning(self, tr('log.add_failed'), msg)
 
@@ -648,7 +651,7 @@ class SheetToConfigWindow(QMainWindow):
                 self.current_project = project
                 self.load_projects(select_id=project.id)
                 self.update_detail()
-                self.log(tr('log.success_detail', detail=msg))
+                self.log(tr('log.success_detail', detail=msg), level='success')
             else:
                 QMessageBox.warning(self, tr('log.update_failed'), msg)
 
@@ -666,7 +669,7 @@ class SheetToConfigWindow(QMainWindow):
                 self.current_project = None
                 self.load_projects()
                 self.reset_detail()
-                self.log(tr('log.success_detail', detail=msg))
+                self.log(tr('log.success_detail', detail=msg), level='success')
             else:
                 QMessageBox.warning(self, tr('log.delete_failed'), msg)
 
@@ -777,7 +780,10 @@ class SheetToConfigWindow(QMainWindow):
                     if not self._update_current_project_path('sharedPath', new_path):
                         return
                 else:
-                    self.log(tr('log.sync_missing'), include_project_name=True)
+                    self.log(
+                        tr('log.sync_missing'), include_project_name=True,
+                        level='warning',
+                    )
                     return
 
             # 执行复制
@@ -795,11 +801,20 @@ class SheetToConfigWindow(QMainWindow):
                         dst = os.path.join(self.current_project.shared_path, item)
                         if os.path.isfile(src):
                             shutil.copy2(src, dst)
-                            self.log(tr('log.file_copied', name=item), include_project_name=True)
+                            self.log(
+                                tr('log.file_copied', name=item),
+                                include_project_name=True, level='success',
+                            )
 
-                    self.log(tr('log.sync_done'), include_project_name=True)
+                    self.log(
+                        tr('log.sync_done'), include_project_name=True,
+                        level='success',
+                    )
                 else:
-                    self.log(tr('log.sync_source_missing'), include_project_name=True)
+                    self.log(
+                        tr('log.sync_source_missing'), include_project_name=True,
+                        level='error',
+                    )
             except Exception as e:
                 self.log(
                     tr('log.sync_failed', detail=str(e)),
@@ -887,7 +902,7 @@ class SheetToConfigWindow(QMainWindow):
         event.acceptProposedAction()
 
         if not self.current_project:
-            self.log(tr('log.select_project_first'))
+            self.log(tr('log.select_project_first'), level='warning')
             return
 
         if not self._ask_question(
@@ -904,7 +919,7 @@ class SheetToConfigWindow(QMainWindow):
             self.current_project = new_project
             self.load_projects(select_id=new_project.id)
             self.update_detail()
-            self.log(tr('log.table_path_updated', path=path))
+            self.log(tr('log.table_path_updated', path=path), level='success')
         else:
             QMessageBox.warning(self, tr('log.update_failed'), msg)
 
@@ -1012,7 +1027,7 @@ class SheetToConfigWindow(QMainWindow):
         """复制日志"""
         clipboard = QApplication.clipboard()
         clipboard.setText('\n'.join(self.current_log_messages))
-        self.log(tr('log.log_copied'))
+        self.log(tr('log.log_copied'), level='success')
 
     def open_folder(self, attr_name):
         """打开文件夹"""
@@ -1023,11 +1038,11 @@ class SheetToConfigWindow(QMainWindow):
             try:
                 if not open_local_path(os.path.normpath(path)):
                     raise OSError("the desktop environment rejected the open request")
-                self.log(tr('log.folder_opened', path=path))
+                self.log(tr('log.folder_opened', path=path), level='success')
             except Exception as e:
-                self.log(tr('log.folder_open_failed', detail=str(e)))
+                self.log(tr('log.folder_open_failed', detail=str(e)), level='error')
         else:
-            self.log(tr('log.path_missing', path=path))
+            self.log(tr('log.path_missing', path=path), level='warning')
 
     def _log_level(self, message):
         """Prefer stable status markers; localized-word checks are legacy fallback."""

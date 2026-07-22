@@ -103,6 +103,17 @@ def prepare_batch_commit(generated: List[dict], workbooks: List[str],
                 # Protocol sources are owned companions but stay out of the
                 # runtime hot-update manifest.
                 deletes.add(stale.with_suffix('.proto'))
+                if actual_roots['csharp'] is not None:
+                    csharp_stale = (
+                        actual_roots['csharp'] / Path(relative).with_suffix('.cs')
+                    ).resolve()
+                    try:
+                        csharp_stale.relative_to(actual_roots['csharp'])
+                    except ValueError as exc:
+                        raise ValueError(
+                            f"C# artifact escapes output root: {csharp_stale}"
+                        ) from exc
+                    deletes.add(csharp_stale)
         writes[manifest_path] = canonical_manifest_bytes(new_manifest)
         changes[platform] = platform_changes
         manifests[platform] = new_manifest

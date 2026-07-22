@@ -6,6 +6,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 from utils.exporter.artifact_manifest import (
+    MANIFEST_NAME,
     ArtifactRecord,
     build_manifest,
     canonical_manifest_bytes,
@@ -13,6 +14,7 @@ from utils.exporter.artifact_manifest import (
     load_manifest,
 )
 from utils.exporter.atomic_writer import AtomicCommitError, commit_files
+from utils.exporter.batch_transaction import prepare_batch_commit
 
 
 class ManifestTests(unittest.TestCase):
@@ -48,6 +50,31 @@ class ManifestTests(unittest.TestCase):
         self.assertEqual(diff_manifests(old, new), {
             "added": ["New.json"], "modified": [], "removed": ["Old.json"]
         })
+
+    def test_removed_pb_also_removes_owned_proto_and_csharp_companions(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            client = root / "client"
+            server = root / "server"
+            csharp = root / "csharp"
+            client.mkdir()
+            csharp.mkdir()
+            record = ArtifactRecord.from_bytes(
+                "client", "Item.pb", "pb", b"payload", "Item.xlsx", "Item"
+            )
+            (client / MANIFEST_NAME).write_bytes(
+                canonical_manifest_bytes(build_manifest("client", [record]))
+            )
+
+            prepared = prepare_batch_commit(
+                [], [], str(client), str(server), str(csharp), "c", False
+            )
+
+            self.assertTrue({
+                (client / "Item.pb").resolve(),
+                (client / "Item.proto").resolve(),
+                (csharp / "Item.cs").resolve(),
+            }.issubset(prepared["deletes"]))
 
 
 class AtomicWriterTests(unittest.TestCase):

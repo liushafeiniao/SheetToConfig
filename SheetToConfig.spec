@@ -24,7 +24,6 @@ a = Analysis(
         'utils.exporter.reference_validator',
         'utils.exporter.template',
         'utils.exporter.type_converter',
-        'utils.exporter.type_definition',
         'utils.exporter.exporters.json_exporter',
         'utils.exporter.exporters.lua_exporter',
         'utils.export_handler',

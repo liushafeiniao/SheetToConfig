@@ -100,6 +100,24 @@ class ConverterManifestTests(unittest.TestCase):
         self.assertIn("DUPLICATE_VALUE", {issue["code"] for issue in result["issues"]})
         self.assertFalse((self.client / "Duplicate.json").exists())
 
+    def test_empty_legacy_id_blocks_json_commit(self):
+        write_workbook(
+            self.tables / "MissingId.xlsx",
+            fields=(("name", "str", "CS"), ("id", "int", "CS")),
+            data_rows=(("sword", None),),
+            code_rows=(("Item", "MissingId.json", "c"),),
+        )
+
+        result = ExcelConverter().export_all(
+            str(self.tables), str(self.client), str(self.server), "c"
+        )
+
+        self.assertFalse(result["success"])
+        self.assertIn("INVALID_JSON_ROOT_KEY", {
+            issue["code"] for issue in result["issues"]
+        })
+        self.assertFalse((self.client / "MissingId.json").exists())
+
     def test_legacy_output_without_extension_exports_json_with_warning(self):
         self._write("LegacyName", "value", code_rows=(("Item", "LegacyName", "c"),))
         logs = []

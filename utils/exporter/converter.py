@@ -440,6 +440,7 @@ class ExcelConverter:
                 error_msg += f"  - {err}\n"
             raise ConverterError(error_msg.rstrip())
 
+        result.raw_data = raw_data
         return result
 
     def _build_field_info(self, worksheet) -> Dict[str, Dict]:
@@ -708,8 +709,14 @@ class ExcelConverter:
             if not row:
                 continue
             key_value = row.get(key_field)
+            raw_key_value = getattr(row, 'raw_data', {}).get(key_field)
             excel_row = getattr(row, 'excel_row', 0)
-            if key_value is None or isinstance(key_value, (list, dict, bytes, bytearray)):
+            if (
+                raw_key_value is None
+                or (isinstance(raw_key_value, str) and not raw_key_value.strip())
+                or key_value is None
+                or isinstance(key_value, (list, dict, bytes, bytearray))
+            ):
                 message = (
                     f"JSON 根键字段 '{key_field}' 在第 {excel_row or '?'} 行为空或不是标量，"
                     "请填写唯一的 int/string 值。"
