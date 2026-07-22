@@ -11,6 +11,9 @@ from scripts.package_macos import dmg_filename, normalize_arch
 from utils.os_integration import open_local_path
 
 
+ROOT = Path(__file__).resolve().parents[1]
+
+
 class PlatformIntegrationTests(unittest.TestCase):
     def test_desktop_opener_uses_a_local_file_url(self):
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -55,6 +58,44 @@ class ReleaseMetadataTests(unittest.TestCase):
             "SheetToConfig-v1.0.0-macos-x64-unsigned.dmg",
             dmg_filename("1.0.0", "x86_64", unsigned=True),
         )
+
+
+class ReleaseWorkflowPolicyTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.workflow = (ROOT / ".github" / "workflows" / "release.yml").read_text(
+            encoding="utf-8"
+        )
+
+    def _job_block(self, job_name: str, next_job_name: str | None = None) -> str:
+        marker = f"\n  {job_name}:"
+        self.assertIn(marker, self.workflow)
+        block = self.workflow.split(marker, 1)[1]
+        if next_job_name is not None:
+            block = block.split(f"\n  {next_job_name}:", 1)[0]
+        return block
+
+    def test_manual_signing_is_opt_in_and_never_publishes_a_release(self):
+        dispatch = self.workflow.split("  workflow_dispatch:", 1)[1].split(
+            "\n\npermissions:", 1
+        )[0]
+        self.assertIn("sign_macos:", dispatch)
+        self.assertIn("type: boolean", dispatch)
+        self.assertIn("default: false", dispatch)
+
+        sign_job = self._job_block("sign-macos", "publish")
+        self.assertIn(
+            "if: github.event_name == 'push' || inputs.sign_macos",
+            sign_job,
+        )
+        self.assertIn("environment: release", sign_job)
+
+        publish_job = self._job_block("publish")
+        self.assertIn(
+            "if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')",
+            publish_job,
+        )
+        self.assertNotIn("inputs.sign_macos", publish_job)
 
 
 if __name__ == "__main__":

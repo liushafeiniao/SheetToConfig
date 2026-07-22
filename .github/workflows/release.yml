@@ -5,6 +5,12 @@ on:
     tags:
       - "v*.*.*"
   workflow_dispatch:
+    inputs:
+      sign_macos:
+        description: Sign and notarize macOS artifacts without publishing a Release
+        required: true
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -136,7 +142,7 @@ jobs:
 
   sign-macos:
     name: Sign and notarize macOS (${{ matrix.arch }})
-    if: github.event_name == 'push'
+    if: github.event_name == 'push' || inputs.sign_macos
     needs: [validate, build-macos]
     strategy:
       fail-fast: false
@@ -189,7 +195,7 @@ jobs:
 
   publish:
     name: Publish GitHub Release
-    if: github.event_name == 'push'
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
     needs: [validate, build-windows, sign-macos]
     runs-on: ubuntu-latest
     permissions:

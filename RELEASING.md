@@ -4,7 +4,7 @@
 
 稳定版本使用 `vX.Y.Z` Tag 触发 GitHub Actions。流水线会验证版本与更新日志、运行 Windows/macOS 测试、构建 Windows EXE，并在 Apple 凭据完整时签名和公证两种架构的 macOS DMG，最后创建 GitHub Release 和 `SHA256SUMS.txt`。
 
-没有 Apple Developer 凭据时，请使用 `Build and Release` 的手动运行入口验证未签名 macOS 包；不要创建正式 Tag，因为稳定 Release 不允许上传未签名 DMG。
+没有 Apple Developer 凭据时，请使用 `Build and Release` 的手动运行入口，并保持 `sign_macos` 关闭，以验证未签名 macOS 包。凭据准备完成后，可手动开启 `sign_macos` 做签名与公证 dry-run；该模式只上传 Actions Artifact，不创建 GitHub Release。不要用正式 Tag 做首次凭据试验。
 
 ## 首次配置
 
@@ -21,6 +21,19 @@
 | `APPLE_API_PRIVATE_KEY_BASE64` | API `.p8` 私钥，Base64 编码 |
 
 凭据只进入受保护的签名任务。Pull Request、普通 Push 和未签名构建任务不能读取这些 Secrets。
+
+## 首次凭据验证（不发布）
+
+Apple 凭据配置完成后，先做一次受保护的手动签名验证：
+
+1. 打开 GitHub Actions → `Build and Release` → `Run workflow`。
+2. 将 `sign_macos` 设置为 `true` 后运行。
+3. 在 `release` Environment 审核提示中确认本次签名任务。
+4. 确认 ARM64 与 Intel 的 `Sign and notarize macOS` job 均成功。
+5. 下载 `macos-signed-arm64` 和 `macos-signed-x64` Artifacts，留作内部验收。
+6. 确认 `Publish GitHub Release` 被跳过；手动运行不得创建或更新 Release。
+
+签名脚本会依次验证 Developer ID 身份、`codesign`、Apple 公证、Stapler 和 Gatekeeper。任何 Secret 缺失都会让签名 job 明确失败，不会回退成未签名稳定包。
 
 ## 发布步骤
 
@@ -42,7 +55,7 @@ SHA256SUMS.txt
 
 ## 未签名验证
 
-在 Actions 中手动运行 `Build and Release`。该模式不会创建 Release，而会保存 Windows EXE、两种架构的 `.app.zip` 和带 `-unsigned` 后缀的 DMG，供内部验证。
+在 Actions 中手动运行 `Build and Release`，并保持 `sign_macos` 为 `false`。该模式不会读取 Apple Secrets 或创建 Release，而会保存 Windows EXE、两种架构的 `.app.zip` 和带 `-unsigned` 后缀的 DMG，供内部验证。
 
 ## 风险与边界
 
