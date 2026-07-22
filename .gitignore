@@ -1,0 +1,47 @@
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+venv/
+.verify-tools/
+.verify-build/
+.verify-build-*/
+
+# Build output
+build/
+dist/
+artifacts/
+*.app/
+*.dmg
+*.exe
+SHA256SUMS.txt
+*.log
+
+# Local application state
+config.json
+projects.json
+theme_config.json
+.env
+.env.*
+!.env.example
+
+# Credentials and private material
+*.pem
+*.key
+*.p12
+*.pfx
+credentials*
+secrets*
+
+# Editor and operating system
+.idea/
+.vscode/
+Thumbs.db
+.DS_Store
+
+# Donation images are publisher-provided release assets.
+assets/donate/*
+!assets/donate/README.txt
+!assets/donate/alipay.png
+!assets/donate/wechat.png

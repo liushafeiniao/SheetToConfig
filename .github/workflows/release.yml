@@ -1,0 +1,231 @@
+name: Build and Release
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  PYTHONUTF8: "1"
+  QT_QPA_PLATFORM: offscreen
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.metadata.outputs.version }}
+      tag: ${{ steps.metadata.outputs.tag }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Validate version, tag, and changelog
+        id: metadata
+        shell: bash
+        run: |
+          if [[ "${GITHUB_EVENT_NAME}" == "push" ]]; then
+            python scripts/check_release.py --tag "${GITHUB_REF_NAME}"
+          else
+            python scripts/check_release.py --self-check
+          fi
+
+  test:
+    name: Test (${{ matrix.name }})
+    needs: validate
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Windows x64
+            runner: windows-latest
+          - name: macOS Apple Silicon
+            runner: macos-15
+          - name: macOS Intel
+            runner: macos-15-intel
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Install dependencies
+        run: python -m pip install -r requirements.txt
+      - name: Compile Python sources
+        run: python -m compileall -q .
+      - name: Run tests
+        run: python -m unittest discover -s tests -v
+
+  build-windows:
+    name: Build Windows x64
+    needs: [validate, test]
+    runs-on: windows-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Install build dependencies
+        run: python -m pip install -r requirements-dev.txt
+      - name: Build executable
+        run: python build.py
+      - name: Prepare release artifact
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force artifacts | Out-Null
+          Copy-Item dist/SheetToConfig.exe "artifacts/SheetToConfig-v${{ needs.validate.outputs.version }}-windows-x64.exe"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows-release
+          path: artifacts/*.exe
+          if-no-files-found: error
+
+  build-macos:
+    name: Build macOS (${{ matrix.arch }})
+    needs: [validate, test]
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: macos-15
+            arch: arm64
+          - runner: macos-15-intel
+            arch: x64
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Install build dependencies
+        run: python -m pip install -r requirements-dev.txt
+      - name: Build app bundle
+        run: python build.py
+      - name: Create unsigned test artifacts
+        shell: bash
+        run: |
+          mkdir -p artifacts
+          ditto -c -k --sequesterRsrc --keepParent \
+            dist/SheetToConfig.app \
+            "artifacts/SheetToConfig-v${{ needs.validate.outputs.version }}-macos-${{ matrix.arch }}.app.zip"
+          python scripts/package_macos.py \
+            --app dist/SheetToConfig.app \
+            --arch "${{ matrix.arch }}" \
+            --version "${{ needs.validate.outputs.version }}" \
+            --unsigned \
+            --output "artifacts/SheetToConfig-v${{ needs.validate.outputs.version }}-macos-${{ matrix.arch }}-unsigned.dmg"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: macos-unsigned-${{ matrix.arch }}
+          path: artifacts/*
+          if-no-files-found: error
+
+  sign-macos:
+    name: Sign and notarize macOS (${{ matrix.arch }})
+    if: github.event_name == 'push'
+    needs: [validate, build-macos]
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: macos-15
+            arch: arm64
+          - runner: macos-15-intel
+            arch: x64
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 60
+    environment: release
+    env:
+      APPLE_CERTIFICATE_P12_BASE64: ${{ secrets.APPLE_CERTIFICATE_P12_BASE64 }}
+      APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+      APPLE_DEVELOPER_ID: ${{ secrets.APPLE_DEVELOPER_ID }}
+      APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+      APPLE_API_KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
+      APPLE_API_ISSUER_ID: ${{ secrets.APPLE_API_ISSUER_ID }}
+      APPLE_API_PRIVATE_KEY_BASE64: ${{ secrets.APPLE_API_PRIVATE_KEY_BASE64 }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/download-artifact@v4
+        with:
+          name: macos-unsigned-${{ matrix.arch }}
+          path: unsigned
+      - name: Extract app bundle
+        shell: bash
+        run: |
+          mkdir -p signed
+          ditto -x -k \
+            "unsigned/SheetToConfig-v${{ needs.validate.outputs.version }}-macos-${{ matrix.arch }}.app.zip" \
+            signed
+      - name: Sign, notarize, and package DMG
+        shell: bash
+        run: |
+          mkdir -p artifacts
+          bash scripts/macos_sign_notarize.sh \
+            signed/SheetToConfig.app \
+            "artifacts/SheetToConfig-v${{ needs.validate.outputs.version }}-macos-${{ matrix.arch }}.dmg" \
+            "${{ needs.validate.outputs.version }}"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: macos-signed-${{ matrix.arch }}
+          path: artifacts/*.dmg
+          if-no-files-found: error
+
+  publish:
+    name: Publish GitHub Release
+    if: github.event_name == 'push'
+    needs: [validate, build-windows, sign-macos]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: windows-release
+          path: artifacts
+          merge-multiple: true
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: macos-signed-*
+          path: artifacts
+          merge-multiple: true
+      - name: Verify artifacts and create checksums
+        shell: bash
+        run: |
+          test -f "artifacts/SheetToConfig-v${{ needs.validate.outputs.version }}-windows-x64.exe"
+          test -f "artifacts/SheetToConfig-v${{ needs.validate.outputs.version }}-macos-arm64.dmg"
+          test -f "artifacts/SheetToConfig-v${{ needs.validate.outputs.version }}-macos-x64.dmg"
+          cd artifacts
+          sha256sum *.exe *.dmg | sort > SHA256SUMS.txt
+          sha256sum --check SHA256SUMS.txt
+      - name: Create or update release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ needs.validate.outputs.tag }}
+        shell: bash
+        run: |
+          if gh release view "${RELEASE_TAG}" >/dev/null 2>&1; then
+            gh release upload "${RELEASE_TAG}" artifacts/* --clobber
+          else
+            gh release create "${RELEASE_TAG}" artifacts/* \
+              --verify-tag \
+              --title "SheetToConfig ${RELEASE_TAG}" \
+              --generate-notes
+          fi
