@@ -86,7 +86,7 @@ jobs:
         run: |
           New-Item -ItemType Directory -Force artifacts | Out-Null
           Copy-Item dist/SheetToConfig.exe "artifacts/SheetToConfig-v${{ needs.validate.outputs.version }}-windows-x64.exe"
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: windows-release
           path: artifacts/*.exe
@@ -128,7 +128,7 @@ jobs:
             --version "${{ needs.validate.outputs.version }}" \
             --unsigned \
             --output "artifacts/SheetToConfig-v${{ needs.validate.outputs.version }}-macos-${{ matrix.arch }}-unsigned.dmg"
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: macos-unsigned-${{ matrix.arch }}
           path: artifacts/*
@@ -181,7 +181,7 @@ jobs:
             signed/SheetToConfig.app \
             "artifacts/SheetToConfig-v${{ needs.validate.outputs.version }}-macos-${{ matrix.arch }}.dmg" \
             "${{ needs.validate.outputs.version }}"
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: macos-signed-${{ matrix.arch }}
           path: artifacts/*.dmg
