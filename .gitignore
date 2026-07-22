@@ -1,0 +1,49 @@
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+venv/
+.verify-tools/
+.verify-build/
+.verify-build-*/
+.playwright-cli/
+.readme-preview.html
+
+# Build output
+build/
+dist/
+artifacts/
+*.app/
+*.dmg
+*.exe
+SHA256SUMS.txt
+SHA256SUMS-*.txt
+*.log
+
+# Local application state
+config.json
+projects.json
+theme_config.json
+.env
+.env.*
+!.env.example
+
+# Credentials and private material
+*.pem
+*.key
+*.p12
+*.pfx
+credentials*
+secrets*
+
+# Editor and operating system
+.idea/
+.vscode/
+Thumbs.db
+.DS_Store
+
+# Donation images are publisher-provided public release assets. Keep the
+# allowlist narrow so unrelated personal images are never staged by accident.
+sheet_to_config/assets/donate/*
+!sheet_to_config/assets/donate/README.txt

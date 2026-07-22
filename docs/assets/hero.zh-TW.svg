@@ -1,0 +1,119 @@
+<svg xmlns="http://www.w3.org/2000/svg"
+     width="1200" height="340" viewBox="0 0 1200 340"
+     role="img" aria-labelledby="title desc">
+  <title id="title">SheetToConfig</title>
+  <desc id="desc">把 Excel 設定表安全地交付為遊戲執行階段設定：帶四行表頭的資料表經過全量驗證，按欄位端標記分流到用戶端與伺服器產物。</desc>
+
+  <defs>
+    <pattern id="cellgrid" width="40" height="40" patternUnits="userSpaceOnUse">
+      <path d="M40 0H0V40" fill="none" stroke="#E8F5F0" stroke-opacity="0.035" stroke-width="1"/>
+    </pattern>
+  </defs>
+
+  <rect width="1200" height="340" rx="24" fill="#0A0F0D"/>
+  <rect width="1200" height="340" rx="24" fill="url(#cellgrid)"/>
+
+  <g id="title-block" transform="translate(64 0)"
+     font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang TC', 'Microsoft JhengHei', 'PingFang SC', 'Microsoft YaHei', sans-serif">
+    <text x="0" y="86" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace"
+          font-size="16" letter-spacing="4" fill="#00D4AA">EXCEL &#8594; GAME RUNTIME CONFIG</text>
+    <text x="0" y="156" font-size="58" font-weight="700" fill="#E8F5F0">SheetToConfig</text>
+    <text x="0" y="208" font-size="25" fill="#E8F5F0">把 Excel 設定表安全地交付為遊戲執行階段設定</text>
+    <text x="0" y="246" font-size="18" fill="#8A9A93">多專案管理 &#183; 全量驗證 &#183; 用戶端 / 伺服器欄位級分流</text>
+
+    <g font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="15" text-anchor="middle">
+      <rect x="0" y="272" width="76" height="30" rx="8" fill="#111815" stroke="#1F2A26"/>
+      <text x="38" y="292" fill="#00D4AA">v1.0.0</text>
+      <rect x="86" y="272" width="140" height="30" rx="8" fill="#111815" stroke="#1F2A26"/>
+      <text x="156" y="292" fill="#8A9A93">Windows stable</text>
+      <rect x="236" y="272" width="160" height="30" rx="8" fill="#111815" stroke="#1F2A26"/>
+      <text x="316" y="292" fill="#8A9A93">macOS source/CI</text>
+      <rect x="406" y="272" width="120" height="30" rx="8" fill="#111815" stroke="#1F2A26"/>
+      <text x="466" y="292" fill="#8A9A93">MIT License</text>
+    </g>
+  </g>
+
+  <line x1="624" y1="78" x2="624" y2="298" stroke="#1F2A26" stroke-width="1"/>
+
+  <g id="project-proof">
+    <!-- Excel workbook card with four-row header -->
+    <rect x="648" y="82" width="252" height="216" rx="12" fill="#111815" stroke="#1F2A26"/>
+    <g transform="translate(664 95)">
+      <rect width="16" height="16" rx="3" fill="none" stroke="#00D4AA" stroke-width="1.5"/>
+      <path d="M5.3 0V16 M0 5.3H16" stroke="#00D4AA" stroke-width="1"/>
+    </g>
+    <text x="688" y="108" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace"
+          font-size="16" fill="#E8F5F0">Item.xlsx</text>
+
+    <!-- table grid: cols 48/68/104, rows 30 -->
+    <g stroke="#1F2A26" stroke-width="1">
+      <path d="M664 126H884 M664 156H884 M664 186H884 M664 216H884 M664 246H884 M664 276H884"/>
+      <path d="M664 126V276 M712 126V276 M780 126V276 M884 126V276"/>
+    </g>
+    <g font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">
+      <text x="674" y="146" font-size="16" font-weight="600" fill="#E8F5F0">ID</text>
+      <text x="722" y="146" font-size="16" font-weight="600" fill="#E8F5F0">Name</text>
+      <text x="790" y="146" font-size="16" font-weight="600" fill="#E8F5F0">Rewards</text>
+      <text x="674" y="176" font-size="15" fill="#00D4AA">int</text>
+      <text x="722" y="176" font-size="15" fill="#00D4AA">string</text>
+      <text x="790" y="176" font-size="15" fill="#00D4AA">intList</text>
+      <text x="674" y="266" font-size="15" fill="#E8F5F0">1</text>
+      <text x="722" y="266" font-size="15" fill="#E8F5F0" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang TC', 'Microsoft JhengHei', 'PingFang SC', 'Microsoft YaHei', sans-serif">初級藥水</text>
+      <text x="790" y="266" font-size="15" fill="#E8F5F0">1001#1002</text>
+    </g>
+    <g font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang TC', 'Microsoft JhengHei', 'PingFang SC', 'Microsoft YaHei', sans-serif"
+       font-size="15" fill="#8A9A93">
+      <text x="674" y="236">編號</text>
+      <text x="722" y="236">名稱</text>
+      <text x="790" y="236">獎勵清單</text>
+    </g>
+    <!-- platform chips -->
+    <g font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="15"
+       font-weight="700" text-anchor="middle">
+      <rect x="668" y="190" width="40" height="22" rx="6" fill="#00D4AA"/>
+      <text x="688" y="206" fill="#0A0F0D">CS</text>
+      <rect x="726" y="190" width="40" height="22" rx="6" fill="#00D4AA"/>
+      <text x="746" y="206" fill="#0A0F0D">CS</text>
+      <rect x="812" y="190" width="40" height="22" rx="6" fill="none" stroke="#00D4AA" stroke-width="1.5"/>
+      <text x="832" y="206" fill="#00D4AA">C</text>
+    </g>
+
+    <!-- validation fork -->
+    <line x1="902" y1="190" x2="912" y2="190" stroke="#4A6B5F" stroke-width="2"/>
+    <circle cx="930" cy="190" r="16" fill="#0E3B32" stroke="#00D4AA" stroke-width="1.5"/>
+    <path d="M922 190l6 6 11-12" fill="none" stroke="#00D4AA" stroke-width="3"
+          stroke-linecap="round" stroke-linejoin="round"/>
+    <text x="930" y="164" text-anchor="middle" font-size="15" fill="#8A9A93"
+          font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang TC', 'Microsoft JhengHei', 'PingFang SC', 'Microsoft YaHei', sans-serif">驗證</text>
+
+    <!-- split connectors -->
+    <path d="M946 182C958 158 960 136 968 132" fill="none" stroke="#4A6B5F" stroke-width="2"/>
+    <path d="M946 198C958 222 960 248 968 244" fill="none" stroke="#4A6B5F" stroke-width="2"/>
+    <path d="M960 126L972 132L960 138Z" fill="#4A6B5F"/>
+    <path d="M960 238L972 244L960 250Z" fill="#4A6B5F"/>
+
+    <!-- client output -->
+    <rect x="968" y="90" width="168" height="84" rx="10" fill="#111815" stroke="#1F2A26"/>
+    <text x="988" y="118" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace"
+          font-size="14" letter-spacing="2" fill="#8A9A93">CLIENT</text>
+    <rect x="1096" y="104" width="26" height="20" rx="5" fill="none" stroke="#00D4AA" stroke-width="1.5"/>
+    <text x="1109" y="119" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace"
+          font-size="14" font-weight="700" fill="#00D4AA">C</text>
+    <g font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="15" fill="#E8F5F0">
+      <text x="988" y="144">ItemConfig.json</text>
+      <text x="988" y="164">SkillData.lua</text>
+    </g>
+
+    <!-- server output -->
+    <rect x="968" y="202" width="168" height="84" rx="10" fill="#111815" stroke="#1F2A26"/>
+    <text x="988" y="230" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace"
+          font-size="14" letter-spacing="2" fill="#8A9A93">SERVER</text>
+    <rect x="1096" y="216" width="26" height="20" rx="5" fill="none" stroke="#8A9A93" stroke-width="1.5"/>
+    <text x="1109" y="231" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace"
+          font-size="14" font-weight="700" fill="#8A9A93">S</text>
+    <g font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="15" fill="#E8F5F0">
+      <text x="988" y="256">ItemConfig.json</text>
+      <text x="988" y="276">QuestConfig.pb</text>
+    </g>
+  </g>
+</svg>

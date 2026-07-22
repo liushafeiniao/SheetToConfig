@@ -1,0 +1,102 @@
+<svg xmlns="http://www.w3.org/2000/svg"
+     width="1200" height="320" viewBox="0 0 1200 320"
+     role="img" aria-labelledby="title desc">
+  <title id="title">SheetToConfig 工作原理</title>
+  <desc id="desc">匯出流水線：Excel 活頁簿經讀取與型別轉換、約束與引用驗證、欄位端標記後，按用戶端與伺服器分流，最終整批暫存並原子提交，同時產生帶 SHA-256 的 manifest。</desc>
+
+  <defs>
+    <pattern id="cellgrid" width="40" height="40" patternUnits="userSpaceOnUse">
+      <path d="M40 0H0V40" fill="none" stroke="#E8F5F0" stroke-opacity="0.035" stroke-width="1"/>
+    </pattern>
+  </defs>
+
+  <rect width="1200" height="320" rx="24" fill="#0A0F0D"/>
+  <rect width="1200" height="320" rx="24" fill="url(#cellgrid)"/>
+
+  <g id="stages"
+     font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang TC', 'Microsoft JhengHei', 'PingFang SC', 'Microsoft YaHei', sans-serif">
+    <!-- stage 1 -->
+    <rect x="64" y="64" width="180" height="88" rx="12" fill="#111815" stroke="#1F2A26"/>
+    <rect x="64" y="80" width="3" height="56" rx="1.5" fill="#00D4AA"/>
+    <text x="84" y="108" font-size="20" font-weight="600" fill="#E8F5F0">Excel 活頁簿</text>
+    <text x="84" y="134" font-size="18" fill="#8A9A93">CODE + 四行表頭</text>
+
+    <!-- stage 2 -->
+    <rect x="272" y="64" width="180" height="88" rx="12" fill="#111815" stroke="#1F2A26"/>
+    <rect x="272" y="80" width="3" height="56" rx="1.5" fill="#00D4AA"/>
+    <text x="292" y="108" font-size="20" font-weight="600" fill="#E8F5F0">讀取與型別轉換</text>
+    <text x="292" y="134" font-size="18" fill="#8A9A93">內建與組合型別</text>
+
+    <!-- stage 3 -->
+    <rect x="480" y="64" width="180" height="88" rx="12" fill="#111815" stroke="#1F2A26"/>
+    <rect x="480" y="80" width="3" height="56" rx="1.5" fill="#00D4AA"/>
+    <text x="500" y="108" font-size="20" font-weight="600" fill="#E8F5F0">約束與引用驗證</text>
+    <text x="500" y="134" font-size="18" fill="#8A9A93">主鍵 &#183; 跨表引用</text>
+
+    <!-- stage 4 -->
+    <rect x="688" y="64" width="170" height="88" rx="12" fill="#111815" stroke="#1F2A26"/>
+    <rect x="688" y="80" width="3" height="56" rx="1.5" fill="#00D4AA"/>
+    <text x="708" y="106" font-size="20" font-weight="600" fill="#E8F5F0">欄位端標記</text>
+    <g font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="16"
+       font-weight="700" text-anchor="middle">
+      <rect x="706" y="118" width="32" height="26" rx="6" fill="none" stroke="#00D4AA" stroke-width="1.5"/>
+      <text x="722" y="136" fill="#00D4AA">C</text>
+      <rect x="744" y="118" width="32" height="26" rx="6" fill="none" stroke="#8A9A93" stroke-width="1.5"/>
+      <text x="760" y="136" fill="#8A9A93">S</text>
+      <rect x="782" y="118" width="32" height="26" rx="6" fill="#00D4AA"/>
+      <text x="798" y="136" fill="#0A0F0D">CS</text>
+      <rect x="820" y="118" width="32" height="26" rx="6" fill="none" stroke="#3D5A50" stroke-width="1.5"/>
+      <text x="836" y="136" fill="#55665E">X</text>
+    </g>
+
+    <!-- client output -->
+    <rect x="886" y="40" width="250" height="52" rx="10" fill="#111815" stroke="#1F2A26"/>
+    <rect x="886" y="48" width="3" height="36" rx="1.5" fill="#00D4AA"/>
+    <text x="906" y="64" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace"
+          font-size="15" font-weight="700" letter-spacing="2" fill="#00D4AA">CLIENT</text>
+    <text x="906" y="84" font-size="16" fill="#E8F5F0">JSON &#183; Lua &#183; Protobuf</text>
+
+    <!-- server output -->
+    <rect x="886" y="124" width="250" height="52" rx="10" fill="#111815" stroke="#1F2A26"/>
+    <rect x="886" y="132" width="3" height="36" rx="1.5" fill="#8A9A93"/>
+    <text x="906" y="148" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace"
+          font-size="15" font-weight="700" letter-spacing="2" fill="#8A9A93">SERVER</text>
+    <text x="906" y="168" font-size="16" fill="#E8F5F0">JSON &#183; Lua &#183; Protobuf</text>
+  </g>
+
+  <!-- connectors -->
+  <g stroke="#4A6B5F" stroke-width="2" fill="none">
+    <line x1="248" y1="108" x2="260" y2="108"/>
+    <line x1="456" y1="108" x2="468" y2="108"/>
+    <line x1="664" y1="108" x2="676" y2="108"/>
+    <path d="M858 100C870 82 876 70 886 66"/>
+    <path d="M858 116C870 134 876 146 886 150"/>
+  </g>
+  <g fill="#4A6B5F">
+    <path d="M260 102L272 108L260 114Z"/>
+    <path d="M468 102L480 108L468 114Z"/>
+    <path d="M676 102L688 108L676 114Z"/>
+    <path d="M876 61L888 66L876 71Z"/>
+    <path d="M876 145L888 150L876 155Z"/>
+  </g>
+
+  <!-- failure branch -->
+  <line x1="570" y1="152" x2="570" y2="172" stroke="#55665E" stroke-width="1.5" stroke-dasharray="4 4"/>
+  <text x="570" y="196" text-anchor="middle" font-size="16" fill="#8A9A93"
+        font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang TC', 'Microsoft JhengHei', 'PingFang SC', 'Microsoft YaHei', sans-serif">&#10005; 任一活頁簿失敗：結構化錯誤，保留舊產物</text>
+
+  <!-- down into commit bar -->
+  <line x1="1011" y1="190" x2="1011" y2="212" stroke="#4A6B5F" stroke-width="2"/>
+  <path d="M1005 212L1011 222L1017 212Z" fill="#4A6B5F"/>
+
+  <!-- atomic commit bar -->
+  <rect x="64" y="224" width="1072" height="52" rx="12" fill="#111815" stroke="#1F2A26"/>
+  <rect x="64" y="234" width="3" height="32" rx="1.5" fill="#00D4AA"/>
+  <text x="600" y="257" text-anchor="middle"
+        font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang TC', 'Microsoft JhengHei', 'PingFang SC', 'Microsoft YaHei', sans-serif">
+    <tspan font-size="18" font-weight="600" fill="#E8F5F0">整批暫存 &#8594; 原子提交</tspan>
+    <tspan dx="22" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace"
+           font-size="17" fill="#00D4AA">excel2json-manifest.json</tspan>
+    <tspan dx="18" font-size="16" fill="#8A9A93">SHA-256 &#183; 大小 &#183; 來源</tspan>
+  </text>
+</svg>
