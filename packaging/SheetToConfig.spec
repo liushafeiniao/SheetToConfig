@@ -40,6 +40,7 @@ a = Analysis(
         'sheet_to_config.utils.exporter.exporters.lua_exporter',
         'sheet_to_config.utils.export_handler',
         'sheet_to_config.utils.import_handler',
+        'sheet_to_config.utils.updater',
         'sheet_to_config.utils.project_manager',
         'sheet_to_config.app_paths',
         'openpyxl',

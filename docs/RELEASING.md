@@ -2,7 +2,7 @@
 
 ## TL;DR
 
-稳定 `vX.Y.Z` 标签只发布两个文件：Windows x64 EXE 和 `SHA256SUMS.txt`。发布前，工作流会校验版本、变更记录、跨平台测试、Windows 构建与精确文件清单；所有检查完成后才会创建新的远端 Release。
+稳定 `vX.Y.Z` 标签只发布两个文件：Windows x64 EXE 和 `SHA256SUMS.txt`。桌面端“检查更新”通过 GitHub Releases API 查找更高版本，下载这两个资产并校验 EXE 的 SHA-256 后，由独立 helper 替换旧程序并重启。发布前，工作流会校验版本、变更记录、跨平台测试、Windows 构建与精确文件清单；所有检查完成后才会创建新的远端 Release。
 
 赞助二维码原图不进入公开源码。只有受保护的 `private-release-assets` Environment 构建任务能读取私密资源，并且需要维护者核对标签提交后批准；该任务只有源码读取权限。包含写权限的发布任务不接触这些私密变量，只接收已校验的 EXE 与校验文件。
 
@@ -30,6 +30,8 @@ SHA256SUMS.txt
 ```
 
 `SHA256SUMS.txt` 只包含上述 EXE 的 SHA-256。工作流会拒绝缺失、重复或额外资产，且在任何远端变更前重新验证校验和。
+
+自动更新只对已打包的 Windows x64 EXE 生效。源码运行、macOS 和其他平台仍可检查版本，但需要从 GitHub Releases 手动安装；网络失败、资产缺失或 SHA-256 不匹配时不会替换当前程序。
 
 ## 私密赞助资源
 

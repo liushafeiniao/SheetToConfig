@@ -477,7 +477,12 @@ class ProtoSchemaParser:
         registry: Any,
         message_prefix: Optional[str] = None,
     ):
-        definition = registry.get_type(type_name)
+        try:
+            definition = registry.get_type(type_name)
+        except Exception as exc:
+            raise ProtoSchemaError(
+                f"字段 {sheet}.{field_name} 类型 {type_name} 无法推导Protobuf类型: {exc}"
+            ) from exc
         func = definition.get("convert_func_str", "") or type_name
         try:
             base, dims = _auto_parse_conversion(func, registry)

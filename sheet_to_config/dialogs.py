@@ -7,17 +7,62 @@ from PyQt5.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QGridLayout, QFormLayout,
     QPushButton, QLabel, QLineEdit, QListWidget, QListWidgetItem,
     QTextEdit, QScrollArea, QFrame, QFileDialog, QMessageBox,
-    QWidget, QButtonGroup, QRadioButton, QCheckBox, QTabWidget
+    QWidget, QButtonGroup, QRadioButton, QCheckBox, QTabWidget, QApplication
 )
 from PyQt5.QtCore import Qt, QSize
 from PyQt5 import QtCore
 from PyQt5.QtGui import QFont, QPixmap
-from PyQt5 import QtCore
 from sheet_to_config.theme_config import THEME_PRESETS, save_theme_config
 from sheet_to_config import icons
 from sheet_to_config.widgets import DragDropLineEdit
 from sheet_to_config.i18n import tr
 from sheet_to_config.styles import ERROR as DANGER_COLOR, _rgba
+from sheet_to_config.version import __version__
+from sheet_to_config.utils.updater import (
+    DownloadedUpdate,
+    ReleaseInfo,
+    UpdateError,
+    download_update,
+    fetch_latest_release,
+    launch_update,
+    supports_automatic_update,
+)
+
+
+class _UpdateWorker(QtCore.QObject):
+    """Run network and file work outside the Qt GUI thread."""
+
+    finished = QtCore.pyqtSignal(object)
+    progress = QtCore.pyqtSignal(int, int)
+
+    def __init__(self, action: str, release: ReleaseInfo | None = None):
+        super().__init__()
+        self.action = action
+        self.release = release
+
+    @QtCore.pyqtSlot()
+    def run(self):
+        try:
+            if self.action == "check":
+                result = fetch_latest_release()
+            else:
+                if self.release is None:
+                    raise UpdateError("Missing release metadata")
+                result = download_update(
+                    self.release,
+                    progress=lambda current, total: self.progress.emit(current, total),
+                )
+            self.finished.emit({
+                "action": self.action,
+                "result": result,
+                "error": None,
+            })
+        except Exception:
+            self.finished.emit({
+                "action": self.action,
+                "result": None,
+                "error": True,
+            })
 
 
 class ProjectEditDialog(QDialog):
@@ -980,6 +1025,14 @@ class AboutDialog(QDialog):
     def __init__(self, parent=None, colors=None):
         super().__init__(parent)
         self.colors = colors or THEME_PRESETS['picunbg_teal'].copy()
+        self._update_thread = None
+        self._update_worker = None
+        self._update_release = None
+        self._update_button = None
+        self._update_hint = None
+        self._close_button = None
+        self._pending_update_release = None
+        self._allow_update_close = False
         self.setWindowTitle(tr('about.title'))
         self.setMinimumSize(680, 620)
         # 移除问号按钮
@@ -1004,6 +1057,7 @@ class AboutDialog(QDialog):
         close_btn.setObjectName("primary")
         close_btn.setMinimumWidth(160)
         close_btn.clicked.connect(self.accept)
+        self._close_button = close_btn
         btn_layout = QHBoxLayout()
         btn_layout.addStretch()
         btn_layout.addWidget(close_btn)
@@ -1016,9 +1070,7 @@ class AboutDialog(QDialog):
 
     def _build_about_tab(self):
         from sheet_to_config import icons as _icons
-        from sheet_to_config.version import (
-            __version__, APP_TITLE, GITHUB_URL, GITHUB_RELEASES_URL,
-        )
+        from sheet_to_config.version import __version__, APP_TITLE, GITHUB_URL
 
         page = QWidget()
         layout = QVBoxLayout(page)
@@ -1067,13 +1119,15 @@ class AboutDialog(QDialog):
         update_btn = QPushButton(f"  {tr('about.check_updates')}")
         update_btn.setIcon(_icons.get_icon('export', self.colors['text_light'], 14))
         update_btn.setToolTip(tr('about.update_tooltip'))
-        update_btn.clicked.connect(lambda: self._open_url(GITHUB_RELEASES_URL))
+        update_btn.clicked.connect(self._check_for_updates)
+        self._update_button = update_btn
         layout.addWidget(update_btn, 0, Qt.AlignLeft)
 
         # 更新方式说明
         update_hint = QLabel(tr('about.update_hint'))
         update_hint.setWordWrap(True)
         update_hint.setStyleSheet(f"color: {self.colors['text_dim']}; font-size: 11px;")
+        self._update_hint = update_hint
         layout.addWidget(update_hint)
 
         layout.addWidget(self._make_divider())
@@ -1085,6 +1139,141 @@ class AboutDialog(QDialog):
 
         layout.addStretch()
         return page
+
+    def _set_update_busy(self, busy: bool, text: str = ''):
+        if self._update_button is not None:
+            self._update_button.setEnabled(not busy)
+        if self._close_button is not None:
+            self._close_button.setEnabled(not busy)
+        if text and self._update_hint is not None:
+            self._update_hint.setText(text)
+
+    def _start_update_task(self, action: str, release: ReleaseInfo | None = None):
+        if self._update_thread is not None:
+            return
+        self._set_update_busy(
+            True,
+            tr(
+                'about.update_checking'
+                if action == 'check' else 'about.update_downloading',
+                version=release.version if release else __version__,
+            ),
+        )
+        thread = QtCore.QThread(self)
+        worker = _UpdateWorker(action, release)
+        worker.moveToThread(thread)
+        thread.started.connect(worker.run)
+        worker.progress.connect(self._on_update_progress)
+        worker.finished.connect(self._on_update_task_finished)
+        worker.finished.connect(thread.quit)
+        worker.finished.connect(worker.deleteLater)
+        thread.finished.connect(thread.deleteLater)
+        thread.finished.connect(self._clear_update_thread)
+        self._update_thread = thread
+        self._update_worker = worker
+        thread.start()
+
+    def _clear_update_thread(self):
+        self._update_thread = None
+        self._update_worker = None
+        if self._pending_update_release is not None:
+            release = self._pending_update_release
+            self._pending_update_release = None
+            self._start_update_task('download', release)
+
+    def _on_update_progress(self, current: int, total: int):
+        if self._update_hint is None or self._update_release is None:
+            return
+        if total > 0:
+            percent = min(100, int(current * 100 / total))
+            self._update_hint.setText(
+                tr(
+                    'about.update_downloading_progress',
+                    version=self._update_release.version,
+                    percent=percent,
+                )
+            )
+
+    def _check_for_updates(self):
+        self._update_release = None
+        self._start_update_task('check')
+
+    def _on_update_task_finished(self, payload):
+        action = payload.get('action')
+        error = payload.get('error')
+        if action == 'check':
+            self._set_update_busy(False)
+            if error:
+                QMessageBox.warning(
+                    self, tr('about.title'), tr('about.update_failed')
+                )
+                return
+            release = payload.get('result')
+            if release is None:
+                QMessageBox.information(
+                    self,
+                    tr('about.title'),
+                    tr('about.update_up_to_date', version=__version__),
+                )
+                return
+            self._update_release = release
+            if not supports_automatic_update():
+                QMessageBox.information(
+                    self,
+                    tr('about.title'),
+                    tr('about.update_manual_only', version=release.version),
+                )
+                return
+            answer = QMessageBox.question(
+                self,
+                tr('about.title'),
+                tr('about.update_available', version=release.version),
+                QMessageBox.Yes | QMessageBox.No,
+                QMessageBox.Yes,
+            )
+            if answer == QMessageBox.Yes:
+                self._pending_update_release = release
+                self._set_update_busy(
+                    True,
+                    tr('about.update_downloading', version=release.version),
+                )
+            return
+
+        self._set_update_busy(False)
+        if error:
+            QMessageBox.warning(
+                self, tr('about.title'), tr('about.update_failed')
+            )
+            return
+        package = payload.get('result')
+        if not isinstance(package, DownloadedUpdate):
+            QMessageBox.warning(
+                self, tr('about.title'), tr('about.update_failed')
+            )
+            return
+        try:
+            launch_update(package)
+        except UpdateError:
+            QMessageBox.warning(
+                self, tr('about.title'), tr('about.update_failed')
+            )
+            return
+        QMessageBox.information(
+            self,
+            tr('about.title'),
+            tr('about.update_restarting', version=package.release.version),
+        )
+        self._allow_update_close = True
+        self.accept()
+        application = QApplication.instance()
+        if application is not None:
+            QtCore.QTimer.singleShot(200, application.quit)
+
+    def closeEvent(self, event):
+        if self._update_thread is not None and not self._allow_update_close:
+            event.ignore()
+            return
+        super().closeEvent(event)
 
     @staticmethod
     def _open_url(url):

@@ -4,10 +4,10 @@
 处理表格导出操作
 """
 import os
-import traceback
 from threading import Thread
 from typing import Callable, Optional
 from sheet_to_config.utils.exporter import ExcelConverter
+from sheet_to_config.utils.issue_messages import localized_issue_message
 from sheet_to_config.i18n import get_locale, tr
 
 
@@ -47,21 +47,7 @@ class ExportHandler:
 
     @staticmethod
     def _localized_issue_message(issue: dict) -> str:
-        code = str(issue.get('code') or 'UNKNOWN')
-        key = f"issue.{code.lower()}"
-        value = issue.get('rawValue')
-        rendered = tr(
-            key,
-            code=code,
-            field=str(issue.get('field') or '-'),
-            value='-' if value is None else str(value),
-        )
-        if rendered == key:
-            rendered = tr('issue.default', code=code)
-        detail = str(issue.get('message') or '').strip()
-        if detail and detail != rendered:
-            return f"{rendered} | {detail}"
-        return rendered
+        return localized_issue_message(issue)
 
     def export(self, mode: str = '1', filename: str = '',
                allow_breaking_proto_change: bool = False,
@@ -194,7 +180,7 @@ class ExportHandlerAsync:
                     validation_only,
                 )
             except Exception:
-                self.handler._log(tr('log.export_unhandled', detail=traceback.format_exc()))
+                self.handler._log(tr('log.export_unhandled'))
                 success = False
             if self.complete_callback:
                 self.complete_callback(success)

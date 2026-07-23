@@ -13,7 +13,7 @@
 
 <p align="center">
   <a href="https://github.com/liushafeiniao/SheetToConfig/actions/workflows/tests.yml"><img alt="테스트 상태" src="https://img.shields.io/github/actions/workflow/status/liushafeiniao/SheetToConfig/tests.yml?branch=main&style=flat-square&label=tests"></a>
-  <a href="https://github.com/liushafeiniao/SheetToConfig/releases"><img alt="현재 버전 1.0.2" src="https://img.shields.io/badge/version-1.0.2-00D4AA?style=flat-square"></a>
+  <a href="https://github.com/liushafeiniao/SheetToConfig/releases"><img alt="현재 버전 1.0.3" src="https://img.shields.io/badge/version-1.0.3-00D4AA?style=flat-square"></a>
   <img alt="Windows 안정 버전, macOS 소스 및 CI" src="https://img.shields.io/badge/platform-Windows%20stable%20%7C%20macOS%20source%2FCI-24292F?style=flat-square">
   <a href="../../LICENSE"><img alt="MIT License" src="https://img.shields.io/badge/license-MIT-24292F?style=flat-square"></a>
 </p>
@@ -359,6 +359,6 @@ Issue를 제출할 때는 재현 가능한 최소 워크북 구조, 기대 결�
 
 ## 버전과 라이선스
 
-- 현재 버전: [`sheet_to_config/version.py`](../../sheet_to_config/version.py)의 `1.0.2`
+- 현재 버전: [`sheet_to_config/version.py`](../../sheet_to_config/version.py)의 `1.0.3`
 - 변경 기록: [`CHANGELOG.md`](../../CHANGELOG.md)
 - 오픈 소스 라이선스: [`MIT`](../../LICENSE)

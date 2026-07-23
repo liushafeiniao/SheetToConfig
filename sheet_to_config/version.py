@@ -16,7 +16,7 @@
 当前稳定 Release 只发布 Windows x64；macOS 未签名构建仅供维护者内部验证。
 """
 
-__version__ = "1.0.2"
+__version__ = "1.0.3"
 
 APP_NAME = "SheetToConfig"
 APP_TITLE = "SheetToConfig"
@@ -24,8 +24,11 @@ APP_TITLE = "SheetToConfig"
 # Canonical public repository.
 GITHUB_URL = "https://github.com/liushafeiniao/SheetToConfig"
 
-# Release 页面（检查更新跳转）
+# Release 页面（手动下载与发布说明）
 GITHUB_RELEASES_URL = GITHUB_URL + "/releases"
+GITHUB_LATEST_RELEASE_API_URL = (
+    "https://api.github.com/repos/liushafeiniao/SheetToConfig/releases/latest"
+)
 
 
 def resource_path(relative):

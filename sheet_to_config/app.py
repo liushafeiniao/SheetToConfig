@@ -739,11 +739,11 @@ class SheetToConfigWindow(QMainWindow):
                 )
                 if not started:
                     raise RuntimeError(tr('log.export_running'))
-            except Exception as exc:
+            except Exception:
                 self.export_in_progress = False
                 self.current_handler = None
                 self.enable_buttons()
-                self.log(tr('log.export_unhandled', detail=exc), level='error')
+                self.log(tr('log.export_start_failed'), level='error')
 
     def import_project(self):
         """传共享"""

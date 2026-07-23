@@ -23,16 +23,28 @@ from .types import TypeConverter
 from .constraints import ConstraintValidator, ConstraintError
 from .expression import ExpressionSyntaxError, parse_field_type
 from .template import TypeDefinitionTemplate
-from .type_registry import TypeRegistry, UndefinedTypeError
+from .type_registry import (
+    TypeDefinitionLoadError,
+    TypeRegistry,
+    UndefinedTypeError,
+)
 from .reference_validator import ReferenceValidator, ReferenceError
 from .protobuf_schema import ProtoSchemaParser, ProtoSchemaError, extract_manifest
-from .exporters.protobuf_exporter import ProtobufExporter
+from .exporters.protobuf_exporter import ProtobufExportError, ProtobufExporter
 from .atomic_writer import AtomicCommitError, commit_files
 from .batch_transaction import (
     IncrementalManifestRequiredError,
     prepare_batch_commit,
 )
+from ..issue_messages import localized_issue_message
 from .validation import ValidationIssue
+
+
+def _tr(key: str, **params: Any) -> str:
+    """Load UI translations only when a user-visible log is emitted."""
+    from sheet_to_config.i18n import tr
+
+    return tr(key, **params)
 
 
 class ConverterError(Exception):
@@ -430,7 +442,7 @@ class ExcelConverter:
         result.raw_data = raw_data
         return result
 
-    def _build_field_info(self, worksheet) -> Dict[str, Dict]:
+    def _build_field_info(self, worksheet, cors: Optional[str] = None) -> Dict[str, Dict]:
         """
         从工作表构建字段信息
 
@@ -439,7 +451,7 @@ class ExcelConverter:
         """
         field_info = {}
         undefined_types = []
-        ref_type_errors = []
+        used_type_names = []
 
         # 需要传入 table_dir 给 type_registry 使用
         # 但这个方法没有 table_dir 参数，需要从外部传入或者存储在实例上
@@ -447,29 +459,29 @@ class ExcelConverter:
 
         for field_name, info in worksheet.field_info.items():
             col_idx = worksheet.get_column_index(field_name)
+            platform = str(info.platform or 'cs').strip().lower()
+            is_exported = cors is None or col_idx == 0 or any(
+                marker in platform for marker in str(cors).lower()
+            )
 
             # 解析类型和约束
             type_full = info.field_type or 'str'
+            if not is_exported:
+                field_info[field_name] = {
+                    'type': type_full,
+                    'platform': platform,
+                    'desc': info.desc or '',
+                    'col_idx': col_idx,
+                    'constraints': [],
+                }
+                continue
             base_type, constraints = self._parse_field_type(type_full)
 
             # 验证类型是否存在
             if self.type_registry and not self.type_registry.has_type(base_type):
                 undefined_types.append(f"'{field_name}'(类型'{base_type}')")
                 continue
-
-            if self.type_registry and getattr(self, '_current_format', '') in ('json', 'lua'):
-                convert_expression = self.type_registry.get_type(base_type).get(
-                    'convert_func_str', ''
-                )
-                if re.search(r'(^|\W)bytes($|\W)', convert_expression):
-                    message = (
-                        f"字段 '{field_name}' 使用bytes类型，但bytes只允许导出为Protobuf"
-                    )
-                    self._record_issue(
-                        'BYTES_FORMAT_ERROR', message, field=field_name,
-                        row=2, column=col_idx + 1,
-                    )
-                    raise ConverterError(message)
+            used_type_names.append(base_type)
 
             # 检查引用类型（find_id 类型）
             if self.type_registry:
@@ -486,7 +498,7 @@ class ExcelConverter:
 
             field_info[field_name] = {
                 'type': base_type,
-                'platform': str(info.platform or 'cs').strip().lower(),
+                'platform': platform,
                 'desc': info.desc or '',
                 'col_idx': col_idx,
                 'constraints': constraints
@@ -498,6 +510,27 @@ class ExcelConverter:
             raise UndefinedTypeError(
                 f"以下字段类型未定义，请在TypeDefinition.xlsx中添加: {fields}"
             )
+
+        if self.type_registry:
+            self.type_registry.validate_types(used_type_names)
+
+            if getattr(self, '_current_format', '') in ('json', 'lua'):
+                for field_name, info in field_info.items():
+                    base_type = info.get('type', '')
+                    if base_type not in used_type_names:
+                        continue
+                    convert_expression = self.type_registry.get_type(base_type).get(
+                        'convert_func_str', ''
+                    )
+                    if re.search(r'(^|\W)bytes($|\W)', convert_expression):
+                        message = (
+                            f"字段 '{field_name}' 使用bytes类型，但bytes只允许导出为Protobuf"
+                        )
+                        self._record_issue(
+                            'BYTES_FORMAT_ERROR', message, field=field_name,
+                            row=2, column=info.get('col_idx', -1) + 1,
+                        )
+                        raise ConverterError(message)
 
         return field_info
 
@@ -535,7 +568,9 @@ class ExcelConverter:
         return ''
 
     def _worksheet_to_data(self, worksheet, cors: str,
-                           omit_empty_fields: Optional[set] = None) -> List[OrderedDict]:
+                           omit_empty_fields: Optional[set] = None,
+                           field_info: Optional[Dict[str, Dict]] = None
+                           ) -> List[OrderedDict]:
         """
         将工作表转换为数据列表
         
@@ -547,7 +582,7 @@ class ExcelConverter:
             转换后的数据列表
         """
         # 构建字段信息
-        field_info = self._build_field_info(worksheet)
+        field_info = field_info or self._build_field_info(worksheet, cors)
         
         issue_start = len(self._issues)
         primary_field = next(
@@ -814,19 +849,25 @@ class ExcelConverter:
             self._current_format = code.format
             if getattr(code, 'implicit_format', False):
                 self._log(
-                    f"[WARNING] {self._current_file}:{code.sheet_name} 的输出名 "
-                    f"'{code.file_name}' 未写扩展名，本次按 JSON 兼容导出；"
-                    "请在 CODE 表中补上 .json。"
+                    "[WARNING] " + _tr(
+                        'log.implicit_json_format',
+                        file=self._current_file,
+                        sheet=code.sheet_name,
+                        name=code.file_name,
+                    )
                 )
-            
+
             if code.format == 'proto':
                 fail_list.append(
-                    f"{code.file_name} - .proto不能单独导出，请将CODE输出名改为.pb"
+                    _tr('log.proto_output_invalid', name=code.file_name)
                 )
                 continue
 
             if code.format not in ('json', 'lua', 'pb'):
-                message = f"未知或缺少输出扩展名: {code.file_name or '(空)'}"
+                message = _tr(
+                    'log.invalid_output_format',
+                    name=code.file_name or '(empty)',
+                )
                 fail_list.append(message)
                 if not self._has_issue(
                     'UNKNOWN_OUTPUT_FORMAT', self._current_file, self._current_sheet
@@ -835,7 +876,11 @@ class ExcelConverter:
                 continue
             
             if code.platform and code.platform not in ('c', 's', 'cs'):
-                fail_list.append(f"{code.file_name} - 无效的平台: {code.platform}")
+                fail_list.append(_tr(
+                    'log.invalid_platform',
+                    name=code.file_name,
+                    platform=code.platform,
+                ))
                 continue
             
             # 检查平台
@@ -850,7 +895,11 @@ class ExcelConverter:
             # 读取工作表
             worksheet = self._read_worksheet(excel_path, code.sheet_name)
             if not worksheet:
-                fail_list.append(f"{code.file_name} - 工作表不存在: {code.sheet_name}")
+                fail_list.append(_tr(
+                    'log.sheet_missing',
+                    name=code.file_name,
+                    sheet=code.sheet_name,
+                ))
                 continue
             
             # 转换数据并验证引用（验证失败则跳过写入）
@@ -858,6 +907,9 @@ class ExcelConverter:
             has_error = False
 
             try:
+                # Compile only types used by this worksheet and export target.
+                # Unused TypeDefinition rows must not block unrelated exports.
+                field_info = self._build_field_info(worksheet, export_platform)
                 file_name = self._strip_output_extension(code.file_name, 'pb')
                 proto_schema = None
                 if code.format == 'pb':
@@ -892,12 +944,12 @@ class ExcelConverter:
                 if 'c' in export_platform:
                     self._current_platform = 'c'
                     client_data = self._worksheet_to_data(
-                        worksheet, 'c', omit_empty_fields
+                        worksheet, 'c', omit_empty_fields, field_info
                     )
                 if 's' in export_platform:
                     self._current_platform = 's'
                     server_data = self._worksheet_to_data(
-                        worksheet, 's', omit_empty_fields
+                        worksheet, 's', omit_empty_fields, field_info
                     )
 
                 # 验证ID引用（在写入文件之前验证）
@@ -905,8 +957,18 @@ class ExcelConverter:
                     try:
                         ref_errors = self._reference_validator.validate_all()
                     except ReferenceError as exc:
+                        reference_target_match = re.search(
+                            r"(?:引用表不存在|引用字段不存在|引用字段没有独立标量定义列|"
+                            r"引用字段类型转换失败|引用表读取失败):\s*([^\s:]+)",
+                            str(exc),
+                        )
+                        reference_target = (
+                            reference_target_match.group(1)
+                            if reference_target_match else ''
+                        )
                         self._record_issue(
-                            'REFERENCE_TABLE_ERROR', str(exc), row=self._current_row
+                            'REFERENCE_TABLE_ERROR', str(exc), row=self._current_row,
+                            field=reference_target or code.sheet_name,
                         )
                         fail_list.append(f"{code.file_name} - {exc}")
                         self._reference_validator.clear()
@@ -916,18 +978,21 @@ class ExcelConverter:
                         for error in ref_errors:
                             fail_list.append(f"{code.file_name} - {error}")
                             location_match = re.search(
-                                r"第(?P<row>\d+)行 '(?P<field>[^']+)'=", error
+                                r"第(?P<row>\d+)行 '(?P<field>[^']+)'=(?P<value>.*?) 在", error
                             )
                             issue_row = self._current_row
                             issue_field = ""
                             issue_column = 0
+                            issue_value = None
                             if location_match:
                                 issue_row = int(location_match.group('row'))
                                 issue_field = location_match.group('field')
                                 issue_column = worksheet.get_column_index(issue_field) + 1
+                                issue_value = location_match.group('value').strip().strip("'")
                             self._record_issue(
                                 'REFERENCE_NOT_FOUND', error, row=issue_row,
                                 field=issue_field, column=issue_column,
+                                raw_value=issue_value,
                             )
                         has_error = True
                         # 清空验证器记录，准备下一个文件
@@ -1027,6 +1092,25 @@ class ExcelConverter:
                     display_name = file_name if not file_name.endswith(f".{code.format}") else file_name
                     success_list.append(f"{display_name}.{code.format} ({platform_name})")
 
+            except TypeDefinitionLoadError as exc:
+                for issue in exc.issues:
+                    self._record_issue(
+                        issue.code,
+                        issue.detail,
+                        file='TypeDefinition.xlsx',
+                        sheet='CODE',
+                        row=issue.row,
+                        column=issue.column,
+                        field=issue.type_name,
+                        raw_value=issue.expression,
+                    )
+                fail_list.extend(
+                    f"{code.file_name} - {issue.detail or issue.expression}"
+                    for issue in exc.issues
+                )
+                has_error = True
+                if self._reference_validator:
+                    self._reference_validator.clear()
             except Exception as e:
                 # 转换/写入错误，删除已生成的文件
                 for fpath in generated_files:
@@ -1041,7 +1125,12 @@ class ExcelConverter:
                     issue.file == self._current_file and issue.sheet == self._current_sheet
                     for issue in self._issues
                 ):
-                    self._record_issue('EXPORT_ERROR', str(e), row=self._current_row)
+                    issue_code = (
+                        'PROTO_SCHEMA_ERROR'
+                        if isinstance(e, (ProtoSchemaError, ProtobufExportError))
+                        else 'EXPORT_ERROR'
+                    )
+                    self._record_issue(issue_code, str(e), row=self._current_row)
                 has_error = True
                 if self._reference_validator:
                     self._reference_validator.clear()
@@ -1081,7 +1170,9 @@ class ExcelConverter:
         try:
             wb = load_workbook(file_path, read_only=True, data_only=True)
         except Exception as e:
-            self._log(f"[ERROR] 读取文件失败: {file_path} - {e}")
+            self._log("[ERROR] " + _tr(
+                'log.workbook_read_failed', path=file_path, detail=e
+            ))
             self._record_issue(
                 'WORKBOOK_READ_ERROR', f"读取工作簿失败: {e}",
                 file=os.path.basename(file_path),
@@ -1144,6 +1235,7 @@ class ExcelConverter:
                 if not code.sheet_name:
                     self._record_issue(
                         'INVALID_CODE', 'CODE中的工作表名不能为空', file=workbook,
+                        field='Sheet', raw_value=code.sheet_name,
                     )
                     continue
                 if code.format not in ('json', 'lua', 'pb'):
@@ -1151,12 +1243,14 @@ class ExcelConverter:
                         'UNKNOWN_OUTPUT_FORMAT',
                         f"未知或缺少输出扩展名: {code.file_name or '(空)'}",
                         file=workbook, sheet=code.sheet_name,
+                        field='File', raw_value=code.file_name,
                     )
                     continue
                 if code.platform and code.platform not in ('c', 's', 'cs'):
                     self._record_issue(
                         'INVALID_PLATFORM', f"无效的平台: {code.platform}",
                         file=workbook, sheet=code.sheet_name,
+                        field='Platform', raw_value=code.platform,
                     )
                     continue
                 target_platform = code.platform or mode
@@ -1172,6 +1266,7 @@ class ExcelConverter:
                             'OUTPUT_PATH_CONFLICT',
                             f"{platform}输出路径冲突: {relative}; 已由 {owner[0]}:{owner[1]} 使用",
                             file=workbook, sheet=code.sheet_name,
+                            field='File', raw_value=relative,
                         )
                     else:
                         reserved[key] = (workbook, code.sheet_name)
@@ -1199,6 +1294,11 @@ class ExcelConverter:
         if sheet_name not in wb.sheetnames:
             wb.close()
             formula_wb.close()
+            self._record_issue(
+                'WORKSHEET_ERROR', f"工作表不存在: {sheet_name}",
+                file=os.path.basename(file_path), sheet=sheet_name,
+                field=sheet_name, raw_value=sheet_name,
+            )
             return None
 
         ws = wb[sheet_name]
@@ -1208,6 +1308,11 @@ class ExcelConverter:
         if len(rows) < 4:
             wb.close()
             formula_wb.close()
+            self._record_issue(
+                'WORKSHEET_ERROR', f"工作表 {sheet_name} 表头不完整",
+                file=os.path.basename(file_path), sheet=sheet_name,
+                field=sheet_name, raw_value=len(rows),
+            )
             return None
 
         worksheet = WorkSheet(sheet_name)
@@ -1364,7 +1469,33 @@ class ExcelConverter:
             # compatible three-column template.
             TypeDefinitionTemplate.ensure_exists(table_dir, locale=locale)
             self.type_registry = TypeRegistry(table_dir)
+        except TypeDefinitionLoadError as exc:
+            for issue in exc.issues:
+                self._record_issue(
+                    issue.code,
+                    issue.detail,
+                    file='TypeDefinition.xlsx',
+                    sheet='CODE',
+                    row=issue.row,
+                    column=issue.column,
+                    field=issue.type_name,
+                    raw_value=issue.expression,
+                )
+            return {
+                'success': False,
+                'count': 0,
+                'success_count': 0,
+                'fail_count': 1,
+                '_generated_artifacts': [],
+                '_workbooks': [],
+                '_success_messages': [],
+            }
         except Exception as e:
+            self._record_issue(
+                'TYPE_DEFINITION_FILE_ERROR', str(e),
+                file='TypeDefinition.xlsx', sheet='CODE',
+                field='TypeDefinition.xlsx',
+            )
             return {
                 'success': False,
                 'count': 0,
@@ -1449,8 +1580,22 @@ class ExcelConverter:
                 total_success += 1
             else:
                 # 有失败时，只输出失败日志
-                for item in fail_list:
-                    self._log(f"{xlsx_name}\n  [ERROR] {item}")
+                issue_dicts = [
+                    issue.to_dict()
+                    for issue in self._issues
+                    if issue.file and issue.file.casefold() == xlsx_name.casefold()
+                ]
+                if issue_dicts:
+                    for issue in issue_dicts:
+                        self._log(
+                            f"{xlsx_name}\n  [ERROR] "
+                            f"{localized_issue_message(issue, include_technical_detail=True)}"
+                        )
+                else:
+                    self._log(
+                        f"{xlsx_name}\n  [ERROR] "
+                        f"{_tr('log.export_item_failed', detail=_tr('issue.export_error'))}"
+                    )
                 total_fail += 1
         
         return {

@@ -10,6 +10,8 @@
 import os
 from contextlib import contextmanager
 from contextvars import ContextVar
+from dataclasses import dataclass
+from threading import RLock
 from typing import Any, Callable, Dict, List, Optional, Set, Tuple
 from openpyxl import load_workbook
 
@@ -21,6 +23,31 @@ from .expression import (
 class UndefinedTypeError(Exception):
     """未定义类型错误"""
     pass
+
+
+@dataclass(frozen=True)
+class TypeDefinitionIssue:
+    """One actionable error in the TypeDefinition CODE sheet."""
+
+    code: str
+    type_name: str
+    expression: str
+    row: int
+    column: int
+    detail: str = ""
+
+
+class TypeDefinitionLoadError(UndefinedTypeError):
+    """Raised after every invalid TypeDefinition row has been collected."""
+
+    def __init__(self, issues: List[TypeDefinitionIssue]):
+        self.issues = tuple(issues)
+        summary = "; ".join(
+            f"CODE!B{issue.row} {issue.type_name}: "
+            f"{issue.detail or issue.expression}"
+            for issue in self.issues
+        )
+        super().__init__(summary or "TypeDefinition.xlsx 无效")
 
 
 class _ReferenceTypeCycle(Exception):
@@ -46,6 +73,7 @@ class TypeRegistry:
         self.table_dir = table_dir
         self._types: Dict[str, Dict[str, Any]] = {}
         self._converter_states: Dict[str, str] = {}
+        self._converter_lock = RLock()
         self._reference_field_cache: Dict[
             Tuple[str, str], Tuple[Optional[str], Tuple[Tuple[str, str], ...]]
         ] = {}
@@ -115,7 +143,7 @@ class TypeRegistry:
         try:
             # Register raw definitions first so aliases may safely reference a
             # definition that appears later in the workbook.
-            for row in rows[1:]:
+            for row_number, row in enumerate(rows[1:], start=2):
                 values = [cell.value for cell in row]
 
                 if len(values) <= col_indices['name']:
@@ -139,6 +167,8 @@ class TypeRegistry:
                     'name': type_name,
                     'convert_func_str': convert_func_str,
                     'convert_func': None,
+                    '_source_row': row_number,
+                    '_source_column': col_indices.get('convert', 1) + 1,
                 }
 
             if not self._types:
@@ -153,12 +183,58 @@ class TypeRegistry:
                     'convert_func': None,
                 }
 
-            for type_name in list(self._types):
-                self._ensure_converter(type_name, [])
         finally:
             wb.close()
+
+    @staticmethod
+    def _type_definition_issue_code(error: UndefinedTypeError) -> str:
+        cause = error
+        expression_code = ''
+        while cause is not None:
+            expression_code = getattr(cause, 'code', '')
+            if expression_code:
+                break
+            cause = cause.__cause__
+        if expression_code in {
+            'FUNCTION_CALL_NOT_CLOSED',
+            'UNMATCHED_CLOSING_PARENTHESIS',
+            'UNMATCHED_OPENING_PARENTHESIS',
+        }:
+            return 'TYPE_DEFINITION_PARENTHESIS'
+        if expression_code:
+            return 'TYPE_DEFINITION_SYNTAX'
+        return 'TYPE_DEFINITION_ERROR'
+
+    def validate_types(self, type_names: List[str]) -> None:
+        """Compile only the TypeDefinition entries used by this export."""
+        issues = []
+        seen = set()
+        for raw_name in type_names:
+            type_name = str(raw_name or '').strip()
+            if not type_name or type_name in seen or type_name not in self._types:
+                continue
+            seen.add(type_name)
+            try:
+                self._ensure_converter(type_name, [])
+            except UndefinedTypeError as exc:
+                definition = self._types[type_name]
+                issues.append(TypeDefinitionIssue(
+                    code=self._type_definition_issue_code(exc),
+                    type_name=type_name,
+                    expression=definition.get('convert_func_str', ''),
+                    row=int(definition.get('_source_row', 0) or 0),
+                    column=int(definition.get('_source_column', 2) or 2),
+                    detail=str(exc),
+                ))
+        if issues:
+            raise TypeDefinitionLoadError(issues)
     
     def _ensure_converter(self, type_name: str, chain: List[str]) -> Callable:
+        """Build one converter safely when lazy compilation races across threads."""
+        with self._converter_lock:
+            return self._ensure_converter_locked(type_name, chain)
+
+    def _ensure_converter_locked(self, type_name: str, chain: List[str]) -> Callable:
         """Build one converter with DFS cycle detection."""
         if type_name not in self._types:
             raise UndefinedTypeError(f"类型别名引用了未定义类型: {type_name}")
@@ -511,7 +587,10 @@ class TypeRegistry:
                 f"可用类型: {', '.join(available)}"
             )
         
-        return self._types[type_name]
+        definition = self._types[type_name]
+        if definition.get('convert_func') is None:
+            self._ensure_converter(type_name, [])
+        return definition
     
     def get_all_types(self) -> List[str]:
         """获取所有类型名称"""

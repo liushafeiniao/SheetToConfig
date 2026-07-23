@@ -9,6 +9,13 @@ from typing import List, Dict, Any, Optional
 from .core import WorkSheet
 
 
+def _tr(key: str, **params: Any) -> str:
+    """Load UI translations only when a reader log is actually emitted."""
+    from sheet_to_config.i18n import tr
+
+    return tr(key, **params)
+
+
 class CodeSheet:
     """CODE 表配置"""
 
@@ -99,12 +106,12 @@ class ExcelReader:
         try:
             wb = load_workbook(file_path, read_only=True, data_only=True)
         except Exception as e:
-            self._log(f"❌ 读取文件失败: {file_path} - {e}")
+            self._log(_tr('log.workbook_read_failed', path=file_path, detail=e))
             return None
 
         if sheet_name:
             if sheet_name not in wb.sheetnames:
-                self._log(f"⚠️ 工作表不存在: {sheet_name}")
+                self._log(_tr('log.worksheet_missing', sheet=sheet_name))
                 wb.close()
                 return None
             ws = wb[sheet_name]
@@ -172,7 +179,7 @@ class ExcelReader:
         try:
             wb = load_workbook(file_path, read_only=True, data_only=True)
         except Exception as e:
-            self._log(f"❌ 读取文件失败: {file_path} - {e}")
+            self._log(_tr('log.workbook_read_failed', path=file_path, detail=e))
             return codes
 
         code_sheet = None

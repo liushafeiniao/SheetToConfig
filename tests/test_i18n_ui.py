@@ -13,6 +13,7 @@ from SheetToConfig import SheetToConfigWindow
 from sheet_to_config.dialogs import ProjectEditDialog
 from sheet_to_config.utils.project_manager import Project, ProjectManager
 from sheet_to_config.utils.export_handler import ExportHandler
+from sheet_to_config.utils.issue_messages import ISSUE_ADVICE_KEYS
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -148,23 +149,91 @@ class LocalizedUiTests(unittest.TestCase):
             "code": "REFERENCE_NOT_FOUND",
             "field": "item_id",
             "rawValue": "Project 名称 42",
+            "path": "Arena.xlsx/Units!B7",
         }
         for locale_id in i18n.SUPPORTED_LOCALES:
             with self.subTest(locale=locale_id):
                 i18n._current_locale = locale_id
                 message = ExportHandler._localized_issue_message(issue)
-                self.assertEqual(i18n.tr("issue.reference_not_found", field="item_id", value="Project 名称 42", code="REFERENCE_NOT_FOUND"), message)
+                self.assertIn(
+                    i18n.tr(
+                        "issue.reference_not_found",
+                        field="item_id",
+                        value="Project 名称 42",
+                        code="REFERENCE_NOT_FOUND",
+                    ),
+                    message,
+                )
                 self.assertIn("item_id", message)
                 self.assertIn("Project 名称 42", message)
+                self.assertIn("Arena.xlsx/Units!B7", message)
                 if locale_id in ("en", "es", "ko"):
                     self.assertNotIn("引用", message)
+
+    def test_type_definition_issue_is_actionable_in_every_locale(self):
+        issue = {
+            "code": "TYPE_DEFINITION_PARENTHESIS",
+            "field": "missionList",
+            "rawValue": "split_list(find_id(mission,突破任务,id)）",
+            "path": "TypeDefinition.xlsx/CODE!B37",
+        }
+
+        for locale_id in i18n.SUPPORTED_LOCALES:
+            with self.subTest(locale=locale_id):
+                i18n._current_locale = locale_id
+                message = ExportHandler._localized_issue_message(issue)
+                self.assertIn("missionList", message)
+                self.assertIn("split_list", message)
+                self.assertIn("TypeDefinition.xlsx/CODE!B37", message)
+                if locale_id != "zh-CN":
+                    self.assertNotIn("括号不匹配", message)
+
+    def test_every_structured_issue_has_a_localized_fix_hint(self):
+        for locale_id in i18n.SUPPORTED_LOCALES:
+            with self.subTest(locale=locale_id):
+                i18n._current_locale = locale_id
+                for code, advice_key in ISSUE_ADVICE_KEYS.items():
+                    with self.subTest(code=code):
+                        message = ExportHandler._localized_issue_message({
+                            "code": code,
+                            "field": "field",
+                            "rawValue": "value",
+                            "path": "Workbook.xlsx/Sheet!B5",
+                        })
+                        self.assertIn(i18n.tr(advice_key), message)
+
+    def test_unknown_issue_does_not_echo_raw_locale_specific_detail(self):
+        i18n._current_locale = "en"
+        message = ExportHandler._localized_issue_message({
+            "code": "NEW_INTERNAL_CODE",
+            "message": "中文底层异常，不应直接显示",
+            "path": "Workbook.xlsx/Sheet!A1",
+        })
+
+        self.assertNotIn("中文底层异常", message)
+        self.assertIn("Workbook.xlsx/Sheet!A1", message)
+        self.assertIn(i18n.tr("issue.advice.generic"), message)
+
+    def test_reference_table_issue_identifies_the_target(self):
+        i18n._current_locale = "zh-CN"
+        message = ExportHandler._localized_issue_message({
+            "code": "REFERENCE_TABLE_ERROR",
+            "field": "Missing.xlsx",
+            "path": "Source.xlsx/References",
+        })
+
+        self.assertIn("Missing.xlsx", message)
+        self.assertIn(i18n.tr("issue.advice.reference_table_error"), message)
 
     def test_structured_export_issue_keeps_actionable_core_detail(self):
         issue = {
             "code": "CONVERSION_ERROR",
             "field": "count",
             "rawValue": "oops",
-            "message": "A.xlsx/Item!B7 的实际值是 'oops'，请填写整数。",
+            "file": "A.xlsx",
+            "sheet": "Item",
+            "row": 7,
+            "column": 2,
         }
 
         message = ExportHandler._localized_issue_message(issue)
@@ -172,7 +241,7 @@ class LocalizedUiTests(unittest.TestCase):
         self.assertIn(i18n.tr("issue.conversion_error", field="count"), message)
         self.assertIn("A.xlsx/Item!B7", message)
         self.assertIn("oops", message)
-        self.assertIn("请填写整数", message)
+        self.assertNotIn("请填写整数", message)
 
     def test_log_levels_use_stable_markers_in_every_locale(self):
         for locale_id in i18n.SUPPORTED_LOCALES:
