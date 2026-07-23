@@ -13,7 +13,7 @@
 
 <p align="center">
   <a href="https://github.com/liushafeiniao/SheetToConfig/actions/workflows/tests.yml"><img alt="测试状态" src="https://img.shields.io/github/actions/workflow/status/liushafeiniao/SheetToConfig/tests.yml?branch=main&style=flat-square&label=tests"></a>
-  <a href="https://github.com/liushafeiniao/SheetToConfig/releases"><img alt="当前版本 1.0.1" src="https://img.shields.io/badge/version-1.0.1-00D4AA?style=flat-square"></a>
+  <a href="https://github.com/liushafeiniao/SheetToConfig/releases"><img alt="当前版本 1.0.2" src="https://img.shields.io/badge/version-1.0.2-00D4AA?style=flat-square"></a>
   <img alt="Windows 稳定版；macOS 源码与 CI" src="https://img.shields.io/badge/platform-Windows%20stable%20%7C%20macOS%20source%2FCI-24292F?style=flat-square">
   <a href="LICENSE"><img alt="MIT License" src="https://img.shields.io/badge/license-MIT-24292F?style=flat-square"></a>
 </p>
@@ -108,14 +108,41 @@ python -m pip install -r requirements.txt
 
 解析按列位置进行，表头行可写可不写；首行第一格是 `Sheet` 等表头文字时会自动跳过。
 
+### 一份完整示例
+
+下图用于快速认识一套完整表格的结构。仓库提供一份完整的 [`TypeDefinition.xlsx`](examples/cross_table/tables/TypeDefinition.xlsx)，其中集中放置 `CODE`、`Guide`、`Examples`、`物品表`、`奖励表` 五个分表，覆盖客户端/服务端字段分流、`unique`、`len`、`equalLen`、`range`、直接跨表引用和引用列表。
+
+`TypeDefinition.xlsx` 会被导出器整体跳过，因此其中的 `物品表`、`奖励表` 是可复制的教学示例，不会直接生成配置。需要实际运行时，把这两个分表复制到普通业务工作簿（如 `GameConfig.xlsx`），再在该工作簿的 `CODE` 分表中声明输出即可。
+
+也可以生成一份独立副本（输出目录必须不存在或为空；`--force` 也只会替换这一份 `TypeDefinition.xlsx`）：
+
+```powershell
+python scripts/create_examples.py --output-dir my-example
+```
+
+<p align="center">
+  <img src="docs/assets/example-workbook.svg" width="100%" alt="示例结构：TypeDefinition.xlsx 集中包含 CODE、Guide、Examples、物品表、奖励表五个分表；物品表与奖励表是可复制的教学示例，复制到 GameConfig.xlsx 后由业务 CODE 页声明输出文件与去向。">
+</p>
+
+<details>
+<summary><strong>这份示例导出后长什么样</strong> — 同一张表在客户端与服务端的不同产物</summary>
+
+<p align="center">
+  <img src="docs/assets/example-output.svg" width="100%" alt="导出结果对照：客户端 RewardConfig.json 包含 itemIds 与 weights，不包含 S 标记的 rate；服务端 RewardConfig.json 包含 rate，不包含 C 标记的 itemIds 与 weights；CS 字段两端都有；物品列表 的 1001#1002 转换为 JSON 数组 [1001, 1002]，intList 的 70#30 转换为 [70, 30]。">
+</p>
+
+`C` 与 `CS` 字段进入客户端产物，`S` 与 `CS` 字段进入服务端产物，`X` 不导出；列表类型的分隔符串（如 `1001#1002`、`70#30`）在 JSON 中转换为数组。
+
+</details>
+
 <details>
 <summary><strong>数据工作表：四行表头与字段端标记</strong> — 字段名 / 类型 / 导出端 / 说明，第一列即主键</summary>
 
 数据表使用四行表头，第五行起是数据：
 
 ```text
-ID    Name      Rewards                    Rate
-int   string    intList+len(1,5)           float+range(0,1)
+itemId  name      itemIds                    rate
+int     string    intList+len(1,5)           float+range(0,1)
 CS    CS        C                          S
 编号  名称      奖励列表                    服务端概率
 1     初级药水  1001#1002                  0.25
@@ -137,9 +164,13 @@ CS    CS        C                          S
 <details>
 <summary><strong>类型、枚举与约束</strong> — 内置类型清单、TypeDefinition 扩展与 11 种字段约束</summary>
 
-内置类型覆盖 `int`、`float`、`string`、`bool`、`bytes`、`text_key`、一至三维列表、字典、路径 `path()` 和跨表 ID 引用；首次导出自动生成的 `TypeDefinition.xlsx` 中包含完整清单与示例。复杂类型也可以在 TypeDefinition 中通过组合表达式扩展。
+内置类型覆盖 `int`、`float`、`string`、`bool`、`bytes`、`text_key`、一至三维列表、字典、路径 `path()` 和跨表 ID 引用。首次导出自动生成的 `TypeDefinition.xlsx` 包含五张表：`CODE` 是实际类型清单，`Guide` 说明约束、分隔符、引用参数与输出边界，`Examples` 提供表达式示例，另外两张本地化命名的教学分表则提供可复制到业务工作簿的完整数据表示例。
 
-枚举在三列 TypeDefinition 中定义，不增加新 Schema。`enum(string,white,green,blue)` 与 `enum(int,1,2,3)` 会先严格转换基础类型，再校验允许值；导出值保持原字符串或整数，不做名称到数字映射。
+`CODE` 使用四列 `Name / Convert / Description / Cell example`；前两列参与转换，后两列用于说明。旧项目的两列、三列文件仍可读取。枚举不增加新 Schema：`enum(string,white,green,blue)` 与 `enum(int,1,2,3)` 会先严格转换基础类型，再校验允许值；导出值保持原字符串或整数。
+
+缺少文件时，`TypeDefinition.xlsx` 会按当前界面语言首次生成；已有文件不会因切换语言而被改写。教学数据表第 1 行始终使用英文 camelCase 代码字段（如 `itemId`、`primaryItemId`），第 2 行使用当前语言的类型名，第 4 行使用当前语言说明；`required()`、`unique()`、`range()` 等约束关键字保持固定。作为跨表引用源的 `itemId` 保留标准 `int`，引用它的字段则使用本地化类型名（中文为 `物品ID`），以维持纯标量 ID 输出。
+
+跨表引用采用两层写法：先在 `TypeDefinition.xlsx / CODE` 注册命名类型，例如中文模板已有的 `物品ID = find_id(GameConfig,物品表,itemId)`，再在业务数据表第 2 行写 `物品ID+required()`；不要重复创建“物品引用”等近义类型，也不要把 `find_id(...)` 直接写进业务表类型行。这里第一个参数是目标工作簿前缀，第二个参数只是报错时的显示标签，第三个参数才是被引用字段。
 
 约束直接追加在类型后面，例如：
 
@@ -148,7 +179,7 @@ intList+len(1,5)
 float+range(0,1)
 string+required()+unique()
 string+regex(^item_[0-9]+$)
-intList+equalLen(Weights)
+intList+equalLen(weights)
 ```
 
 支持的约束包括 `len`、`len2`、`len3`、`equalLen`、`equalLen2`、`coexist`、`leastOne`、`required` / `notEmpty`、`range`、`regex` 和 `unique`。
@@ -330,6 +361,6 @@ tests/                        自动化测试
 
 ## 版本与许可证
 
-- 当前版本：[`sheet_to_config/version.py`](sheet_to_config/version.py) 中的 `1.0.1`
+- 当前版本：[`sheet_to_config/version.py`](sheet_to_config/version.py) 中的 `1.0.2`
 - 变更记录：[`CHANGELOG.md`](CHANGELOG.md)
 - 开源许可证：[`MIT`](LICENSE)

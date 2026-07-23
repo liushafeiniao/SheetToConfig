@@ -1,0 +1,113 @@
+<svg xmlns="http://www.w3.org/2000/svg"
+     width="1200" height="480" viewBox="0 0 1200 480"
+     role="img" aria-labelledby="title desc">
+  <title id="title">サンプルのエクスポート結果比較</title>
+  <desc id="desc">報酬シートのクライアントとサーバーで異なる成果物：クライアントの RewardConfig.json には itemIds と weights が含まれ、S マークの rate は含まれません。サーバーには rate が含まれ、C マークの itemIds と weights は含まれません。CS フィールドは両端に出力されます。アイテムリスト の 1001#1002 は JSON 配列 [1001, 1002] に、intList の 70#30 は [70, 30] に変換されます。</desc>
+
+  <defs>
+    <pattern id="cellgrid" width="40" height="40" patternUnits="userSpaceOnUse">
+      <path d="M40 0H0V40" fill="none" stroke="#E8F5F0" stroke-opacity="0.035" stroke-width="1"/>
+    </pattern>
+  </defs>
+
+  <rect width="1200" height="480" rx="24" fill="#0A0F0D"/>
+  <rect width="1200" height="480" rx="24" fill="url(#cellgrid)"/>
+
+  <!-- ============ field list ============ -->
+  <g id="field-list">
+    <rect x="48" y="32" width="300" height="424" rx="12" fill="#111815" stroke="#1F2A26"/>
+    <text x="72" y="66" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', 'Hiragino Kaku Gothic ProN', 'Yu Gothic', 'Meiryo', sans-serif"
+          font-size="16" font-weight="600" fill="#E8F5F0">報酬フィールドと出力先</text>
+    <g stroke="#1F2A26" stroke-width="1">
+      <path d="M64 136H332 M64 184H332 M64 232H332 M64 280H332"/>
+    </g>
+    <g font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="15" fill="#E8F5F0">
+      <text x="72" y="119">rewardId</text>
+      <text x="72" y="167">primaryItemId</text>
+      <text x="72" y="215">itemIds</text>
+      <text x="72" y="263">weights</text>
+      <text x="72" y="311">rate</text>
+    </g>
+    <g font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="13"
+       font-weight="700" text-anchor="middle">
+      <rect x="292" y="101" width="40" height="22" rx="6" fill="#00D4AA"/>
+      <text x="312" y="117" fill="#0A0F0D">CS</text>
+      <rect x="292" y="149" width="40" height="22" rx="6" fill="#00D4AA"/>
+      <text x="312" y="165" fill="#0A0F0D">CS</text>
+      <rect x="292" y="197" width="40" height="22" rx="6" fill="none" stroke="#00D4AA" stroke-width="1.5"/>
+      <text x="312" y="213" fill="#00D4AA">C</text>
+      <rect x="292" y="245" width="40" height="22" rx="6" fill="none" stroke="#00D4AA" stroke-width="1.5"/>
+      <text x="312" y="261" fill="#00D4AA">C</text>
+      <rect x="292" y="293" width="40" height="22" rx="6" fill="none" stroke="#8A9A93" stroke-width="1.5"/>
+      <text x="312" y="309" fill="#8A9A93">S</text>
+    </g>
+  </g>
+
+  <!-- split connectors -->
+  <path d="M352 236C372 195 380 140 398 134" fill="none" stroke="#4A6B5F" stroke-width="2"/>
+  <path d="M352 252C372 293 380 348 398 354" fill="none" stroke="#4A6B5F" stroke-width="2"/>
+  <path d="M390 128L402 134L390 140Z" fill="#4A6B5F"/>
+  <path d="M390 348L402 354L390 360Z" fill="#4A6B5F"/>
+
+  <!-- ============ client output ============ -->
+  <g id="client-output">
+    <rect x="400" y="32" width="560" height="204" rx="12" fill="#111815" stroke="#1F2A26"/>
+    <rect x="400" y="48" width="3" height="36" rx="1.5" fill="#00D4AA"/>
+    <text x="424" y="62" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace"
+          font-size="14" font-weight="700" letter-spacing="2" fill="#00D4AA">CLIENT</text>
+    <text x="944" y="62" text-anchor="end" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace"
+          font-size="14" fill="#E8F5F0">RewardConfig.json</text>
+    <g font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="15">
+      <text x="424" y="92" fill="#8A9A93">{</text>
+      <text x="424" y="114" fill="#E8F5F0">  "rewardId": 1,</text>
+      <text x="424" y="136" fill="#E8F5F0">  "primaryItemId": 1001,</text>
+      <text x="424" y="158" fill="#E8F5F0">  "itemIds": [1001, 1002],</text>
+      <text x="424" y="180" fill="#E8F5F0">  "weights": [70, 30]</text>
+      <text x="424" y="202" fill="#8A9A93">}</text>
+      <text x="424" y="226" font-size="13" fill="#55665E">// rate は除外（S マーク）</text>
+    </g>
+  </g>
+
+  <!-- ============ server output ============ -->
+  <g id="server-output">
+    <rect x="400" y="252" width="560" height="204" rx="12" fill="#111815" stroke="#1F2A26"/>
+    <rect x="400" y="268" width="3" height="36" rx="1.5" fill="#8A9A93"/>
+    <text x="424" y="282" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace"
+          font-size="14" font-weight="700" letter-spacing="2" fill="#8A9A93">SERVER</text>
+    <text x="944" y="282" text-anchor="end" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace"
+          font-size="14" fill="#E8F5F0">RewardConfig.json</text>
+    <g font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="15">
+      <text x="424" y="312" fill="#8A9A93">{</text>
+      <text x="424" y="334" fill="#E8F5F0">  "rewardId": 1,</text>
+      <text x="424" y="356" fill="#E8F5F0">  "primaryItemId": 1001,</text>
+      <text x="424" y="378" fill="#E8F5F0">  "rate": 0.25</text>
+      <text x="424" y="400" fill="#8A9A93">}</text>
+      <text x="424" y="424" font-size="13" fill="#55665E">// itemIds、weights は除外（C マーク）</text>
+    </g>
+  </g>
+
+  <!-- ============ conversion notes ============ -->
+  <g id="notes">
+    <rect x="976" y="32" width="176" height="424" rx="12" fill="#111815" stroke="#1F2A26"/>
+    <text x="996" y="66" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', 'Hiragino Kaku Gothic ProN', 'Yu Gothic', 'Meiryo', sans-serif"
+          font-size="16" font-weight="600" fill="#E8F5F0">変換ポイント</text>
+    <text x="996" y="104" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace"
+          font-size="13" fill="#00D4AA">1001#1002</text>
+    <text x="996" y="124" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace"
+          font-size="13" fill="#E8F5F0">&#8594; [1001, 1002]</text>
+    <text x="996" y="144" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', 'Hiragino Kaku Gothic ProN', 'Yu Gothic', 'Meiryo', sans-serif"
+          font-size="13" fill="#55665E">アイテムリストが配列に</text>
+    <text x="996" y="184" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace"
+          font-size="13" fill="#00D4AA">70#30</text>
+    <text x="996" y="204" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace"
+          font-size="13" fill="#E8F5F0">&#8594; [70, 30]</text>
+    <text x="996" y="224" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', 'Hiragino Kaku Gothic ProN', 'Yu Gothic', 'Meiryo', sans-serif"
+          font-size="13" fill="#55665E">intList が配列に</text>
+    <g font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', 'Hiragino Kaku Gothic ProN', 'Yu Gothic', 'Meiryo', sans-serif"
+       font-size="13" fill="#8A9A93">
+      <text x="996" y="268">C と CS &#8594; クライアント</text>
+      <text x="996" y="292">S と CS &#8594; サーバー</text>
+      <text x="996" y="316">X &#8594; 出力しない</text>
+    </g>
+  </g>
+</svg>

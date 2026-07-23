@@ -89,7 +89,10 @@ class SheetToConfigUpgradeTests(unittest.TestCase):
             TypeDefinitionTemplate.ensure_exists(str(table_dir), locale="ja")
             path = table_dir / "TypeDefinition.xlsx"
             workbook = load_workbook(path)
-            self.assertEqual(["名前", "変換関数", "説明"], [cell.value for cell in workbook["CODE"][1]])
+            self.assertEqual(
+                ["名前", "変換関数", "説明", "セル例"],
+                [cell.value for cell in workbook["CODE"][1]],
+            )
             workbook["CODE"].append(("custom", "string", "keep me"))
             original_rows = workbook["CODE"].max_row
             workbook.save(path)
@@ -100,7 +103,12 @@ class SheetToConfigUpgradeTests(unittest.TestCase):
             self.assertEqual(original_bytes, path.read_bytes())
             workbook = load_workbook(path)
             rows = list(workbook["CODE"].values)
-            self.assertIn(("custom", "string", "keep me"), rows)
+            self.assertTrue(
+                any(row[:3] == ("custom", "string", "keep me") for row in rows),
+                rows,
+            )
+            self.assertTrue(any(row[:2] == ("整数", "int") for row in rows), rows)
+            self.assertFalse(any(row[0] == "entero" for row in rows), rows)
             self.assertGreaterEqual(workbook["CODE"].max_row, original_rows)
             workbook.close()
             self.assertTrue(TypeRegistry(str(table_dir)).has_type("int"))

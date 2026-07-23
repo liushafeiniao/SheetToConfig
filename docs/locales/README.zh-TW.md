@@ -13,7 +13,7 @@
 
 <p align="center">
   <a href="https://github.com/liushafeiniao/SheetToConfig/actions/workflows/tests.yml"><img alt="測試狀態" src="https://img.shields.io/github/actions/workflow/status/liushafeiniao/SheetToConfig/tests.yml?branch=main&style=flat-square&label=tests"></a>
-  <a href="https://github.com/liushafeiniao/SheetToConfig/releases"><img alt="目前版本 1.0.1" src="https://img.shields.io/badge/version-1.0.1-00D4AA?style=flat-square"></a>
+  <a href="https://github.com/liushafeiniao/SheetToConfig/releases"><img alt="目前版本 1.0.2" src="https://img.shields.io/badge/version-1.0.2-00D4AA?style=flat-square"></a>
   <img alt="Windows 穩定版；macOS 原始碼與 CI" src="https://img.shields.io/badge/platform-Windows%20stable%20%7C%20macOS%20source%2FCI-24292F?style=flat-square">
   <a href="../../LICENSE"><img alt="MIT License" src="https://img.shields.io/badge/license-MIT-24292F?style=flat-square"></a>
 </p>
@@ -108,14 +108,41 @@ python -m pip install -r requirements.txt
 
 解析按欄位置進行，表頭列可寫可不寫；首列第一格是 `Sheet` 等表頭文字時會自動跳過。
 
+### 一份完整範例
+
+下圖用於快速認識一套完整表格的結構。儲存庫提供一份完整的 [`TypeDefinition.xlsx`](../../examples/cross_table/tables/TypeDefinition.xlsx)，其中集中放置 `CODE`、`Guide`、`Examples`、`物品表`、`獎勵表` 五個分頁，涵蓋用戶端/伺服器欄位分流、`unique`、`len`、`equalLen`、`range`、直接跨表引用與引用清單。
+
+`TypeDefinition.xlsx` 會被匯出器整體略過，因此其中的 `物品表`、`獎勵表` 是可複製的教學範例，不會直接產生設定。需要實際執行時，把這兩個分頁複製到一般業務活頁簿（如 `GameConfig.xlsx`），再在該活頁簿的 `CODE` 分頁中宣告輸出即可。
+
+也可以產生一份獨立副本（輸出目錄必須不存在或為空；`--force` 也只會取代這一份 `TypeDefinition.xlsx`）：
+
+```powershell
+python scripts/create_examples.py --output-dir my-example
+```
+
+<p align="center">
+  <img src="../assets/example-workbook.zh-TW.svg" width="100%" alt="範例結構：TypeDefinition.xlsx 集中包含 CODE、Guide、Examples、物品表、獎勵表五個分頁；物品表與獎勵表是可複製的教學範例，複製到 GameConfig.xlsx 後由業務 CODE 分頁宣告輸出檔案與去向。">
+</p>
+
+<details>
+<summary><strong>這份範例匯出後長什麼樣</strong> — 同一張表在用戶端與伺服器的不同產物</summary>
+
+<p align="center">
+  <img src="../assets/example-output.zh-TW.svg" width="100%" alt="匯出結果對照：用戶端 RewardConfig.json 包含 itemIds 與 weights，不包含 S 標記的 rate；伺服器 RewardConfig.json 包含 rate，不包含 C 標記的 itemIds 與 weights；CS 欄位兩端都有；物品清單的 1001#1002 轉換為 JSON 陣列 [1001, 1002]，intList 的 70#30 轉換為 [70, 30]。">
+</p>
+
+`C` 與 `CS` 欄位進入用戶端產物，`S` 與 `CS` 欄位進入伺服器產物，`X` 不匯出；清單型別的分隔符串（如 `1001#1002`、`70#30`）在 JSON 中轉換為陣列。
+
+</details>
+
 <details>
 <summary><strong>資料工作表：四行表頭與欄位端標記</strong> — 欄位名 / 型別 / 匯出端 / 說明，第一欄即主鍵</summary>
 
 資料表使用四行表頭，第五列起是資料：
 
 ```text
-ID    Name      Rewards                    Rate
-int   string    intList+len(1,5)           float+range(0,1)
+itemId  name      itemIds                    rate
+int     string    intList+len(1,5)           float+range(0,1)
 CS    CS        C                          S
 編號  名稱      獎勵清單                    伺服器機率
 1     初級藥水  1001#1002                  0.25
@@ -137,9 +164,11 @@ CS    CS        C                          S
 <details>
 <summary><strong>型別、列舉與約束</strong> — 內建型別清單、TypeDefinition 擴充與 11 種欄位約束</summary>
 
-內建型別涵蓋 `int`、`float`、`string`、`bool`、`bytes`、`text_key`、一至三維清單、字典、路徑 `path()` 與跨表 ID 引用；首次匯出自動產生的 `TypeDefinition.xlsx` 中包含完整清單與範例。複雜型別也可以在 TypeDefinition 中透過組合運算式擴充。
+內建型別涵蓋 `int`、`float`、`string`、`bool`、`bytes`、`text_key`、一至三維清單、字典、`path()` 與跨活頁簿 ID 引用。產生的 `TypeDefinition.xlsx` 包含實際定義用的 `CODE`、說明約束與邊界的 `Guide`、表達式範例用的 `Examples`，以及可複製的資料表範例 `物品表` 與 `獎勵表`。
 
-列舉在三欄 TypeDefinition 中定義，不增加新 Schema。`enum(string,white,green,blue)` 與 `enum(int,1,2,3)` 會先嚴格轉換基礎型別，再驗證允許值；匯出值保持原字串或整數，不做名稱到數字映射。
+`CODE` 使用 `Name / Convert / Description / Cell example` 四欄，只有前兩欄參與轉換；舊版兩欄、三欄檔案仍可讀取。繁中範本已註冊 `物品ID = find_id(GameConfig,物品表,itemId)`，資料表第 2 列直接寫 `物品ID+required()`；不要再建立「物品引用」等近義型別，也不要直接填入 `find_id(...)`。`find_id` 的第二個參數只是顯示標籤，不是分頁選擇器。
+
+缺少檔案時，`TypeDefinition.xlsx` 會依目前介面語言首次建立；切換介面語言不會改寫既有檔案。教學分頁第 1 列固定使用英文 camelCase 程式欄位，第 2 列使用目前語言的型別名稱，第 4 列使用目前語言說明；`required()`、`unique()`、`range()` 等約束關鍵字保持不變。作為跨表引用來源的 `itemId` 保留標準 `int`，引用欄位則使用 `物品ID`，以維持純量 ID 輸出相容性。
 
 約束直接附加在型別後面，例如：
 
@@ -148,7 +177,7 @@ intList+len(1,5)
 float+range(0,1)
 string+required()+unique()
 string+regex(^item_[0-9]+$)
-intList+equalLen(Weights)
+intList+equalLen(weights)
 ```
 
 支援的約束包括 `len`、`len2`、`len3`、`equalLen`、`equalLen2`、`coexist`、`leastOne`、`required` / `notEmpty`、`range`、`regex` 與 `unique`。
@@ -330,6 +359,6 @@ tests/                        自動化測試
 
 ## 版本與授權
 
-- 目前版本：[`sheet_to_config/version.py`](../../sheet_to_config/version.py) 中的 `1.0.1`
+- 目前版本：[`sheet_to_config/version.py`](../../sheet_to_config/version.py) 中的 `1.0.2`
 - 變更記錄：[`CHANGELOG.md`](../../CHANGELOG.md)
 - 開源授權：[`MIT`](../../LICENSE)

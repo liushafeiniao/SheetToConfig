@@ -1,0 +1,273 @@
+<svg xmlns="http://www.w3.org/2000/svg"
+     width="1200" height="892" viewBox="0 0 1200 892"
+     role="img" aria-labelledby="title desc">
+  <title id="title">SheetToConfig サンプルワークブック</title>
+  <desc id="desc">サンプル構造：TypeDefinition.xlsx に CODE、Guide、Examples、アイテム、報酬 の 5 シートを集約。アイテム と 報酬 はコピー可能な学習用サンプルで、GameConfig.xlsx にコピーした後、業務用 CODE シートが出力を宣言します。フィールド名は英語キャメルケース固定、型は日本語エイリアス（整数、文字列、品質、アイコンパス、アイテムID、アイテムリスト など）を使い、itemId は固定 int のまま、シート名とフィールド説明は日本語です。</desc>
+
+  <defs>
+    <pattern id="cellgrid" width="40" height="40" patternUnits="userSpaceOnUse">
+      <path d="M40 0H0V40" fill="none" stroke="#E8F5F0" stroke-opacity="0.035" stroke-width="1"/>
+    </pattern>
+  </defs>
+
+  <rect width="1200" height="892" rx="24" fill="#0A0F0D"/>
+  <rect width="1200" height="892" rx="24" fill="url(#cellgrid)"/>
+
+  <!-- ============ CODE worksheet panel ============ -->
+  <g id="code-sheet">
+    <rect x="48" y="32" width="560" height="284" rx="12" fill="#111815" stroke="#1F2A26"/>
+    <g transform="translate(64 48)">
+      <rect width="15" height="15" rx="3" fill="none" stroke="#00D4AA" stroke-width="1.5"/>
+      <path d="M5 0V15 M0 5H15" stroke="#00D4AA" stroke-width="1"/>
+    </g>
+    <text x="88" y="62" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', 'Hiragino Kaku Gothic ProN', 'Yu Gothic', 'Meiryo', sans-serif"
+          font-size="16" font-weight="600" fill="#E8F5F0">コピーして実行：GameConfig.xlsx — CODE</text>
+
+    <g stroke="#1F2A26" stroke-width="1">
+      <path d="M64 90H534 M64 128H534 M64 166H534 M64 204H534 M64 242H534 M64 280H534"/>
+      <path d="M64 90V280 M184 90V280 M414 90V280 M534 90V280"/>
+    </g>
+
+    <g font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">
+      <text x="76" y="116" font-size="14" font-weight="600" fill="#8A9A93">Sheet</text>
+      <text x="196" y="116" font-size="14" font-weight="600" fill="#8A9A93">File</text>
+      <text x="426" y="116" font-size="14" font-weight="600" fill="#8A9A93">Platform</text>
+      <g font-size="15" fill="#E8F5F0">
+        <text x="76" y="154" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', 'Hiragino Kaku Gothic ProN', 'Yu Gothic', 'Meiryo', sans-serif">アイテム</text>
+        <text x="196" y="154">ItemConfig.json</text>
+        <text x="76" y="192" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', 'Hiragino Kaku Gothic ProN', 'Yu Gothic', 'Meiryo', sans-serif">報酬</text>
+        <text x="196" y="192">RewardConfig.json</text>
+        <text x="76" y="230" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', 'Hiragino Kaku Gothic ProN', 'Yu Gothic', 'Meiryo', sans-serif">ドロップ</text>
+        <text x="196" y="230">DropConfig.lua</text>
+        <text x="76" y="268" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', 'Hiragino Kaku Gothic ProN', 'Yu Gothic', 'Meiryo', sans-serif">クエスト</text>
+        <text x="196" y="268">QuestConfig.pb</text>
+      </g>
+    </g>
+
+    <g font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="13"
+       font-weight="700" text-anchor="middle">
+      <rect x="426" y="136" width="40" height="22" rx="6" fill="#00D4AA"/>
+      <text x="446" y="152" fill="#0A0F0D">cs</text>
+      <rect x="426" y="174" width="40" height="22" rx="6" fill="#00D4AA"/>
+      <text x="446" y="190" fill="#0A0F0D">cs</text>
+      <rect x="426" y="212" width="40" height="22" rx="6" fill="none" stroke="#8A9A93" stroke-width="1.5"/>
+      <text x="446" y="228" fill="#8A9A93">s</text>
+      <rect x="426" y="250" width="40" height="22" rx="6" fill="none" stroke="#8A9A93" stroke-width="1.5"/>
+      <text x="446" y="266" fill="#8A9A93">s</text>
+    </g>
+  </g>
+
+  <!-- ============ TypeDefinition panel ============ -->
+  <g id="type-definition">
+    <rect x="632" y="32" width="520" height="284" rx="12" fill="#111815" stroke="#1F2A26"/>
+    <g transform="translate(648 48)">
+      <rect width="15" height="15" rx="3" fill="none" stroke="#00D4AA" stroke-width="1.5"/>
+      <path d="M5 0V15 M0 5H15" stroke="#00D4AA" stroke-width="1"/>
+    </g>
+    <text x="672" y="62" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', 'Hiragino Kaku Gothic ProN', 'Yu Gothic', 'Meiryo', sans-serif"
+          font-size="16" font-weight="600" fill="#E8F5F0">TypeDefinition.xlsx</text>
+
+    <!-- reference types -->
+    <rect x="648" y="252" width="500" height="48" fill="#00D4AA" fill-opacity="0.05"/>
+
+    <g stroke="#1F2A26" stroke-width="1">
+      <path d="M648 84H1148 M648 108H1148 M648 132H1148 M648 156H1148 M648 180H1148 M648 204H1148 M648 228H1148 M648 252H1148 M648 276H1148 M648 300H1148"/>
+      <path d="M648 84V300 M748 84V300 M1010 84V300 M1148 84V300"/>
+    </g>
+
+    <g font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', 'Hiragino Kaku Gothic ProN', 'Yu Gothic', 'Meiryo', sans-serif"
+       font-size="13" font-weight="600" fill="#8A9A93">
+      <text x="658" y="100">型名</text>
+      <text x="758" y="100">変換関数</text>
+      <text x="1020" y="100">説明 / 例</text>
+    </g>
+
+    <g font-size="13">
+      <text x="658" y="125" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', 'Hiragino Kaku Gothic ProN', 'Yu Gothic', 'Meiryo', sans-serif" fill="#E8F5F0">整数</text>
+      <text x="758" y="125" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" fill="#8A9A93">int</text>
+      <text x="658" y="149" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', 'Hiragino Kaku Gothic ProN', 'Yu Gothic', 'Meiryo', sans-serif" fill="#E8F5F0">文字列</text>
+      <text x="758" y="149" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" fill="#8A9A93">string</text>
+      <text x="658" y="173" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', 'Hiragino Kaku Gothic ProN', 'Yu Gothic', 'Meiryo', sans-serif" fill="#00D4AA">品質</text>
+      <text x="758" y="173" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" fill="#00D4AA">qualityEnum</text>
+      <text x="658" y="197" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', 'Hiragino Kaku Gothic ProN', 'Yu Gothic', 'Meiryo', sans-serif" fill="#00D4AA">アイコンパス</text>
+      <text x="758" y="197" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" fill="#00D4AA">iconPath</text>
+      <text x="658" y="221" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', 'Hiragino Kaku Gothic ProN', 'Yu Gothic', 'Meiryo', sans-serif" fill="#E8F5F0">整数リスト</text>
+      <text x="758" y="221" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" fill="#8A9A93">intList</text>
+      <text x="658" y="245" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', 'Hiragino Kaku Gothic ProN', 'Yu Gothic', 'Meiryo', sans-serif" fill="#E8F5F0">浮動小数</text>
+      <text x="758" y="245" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" fill="#8A9A93">float</text>
+      <text x="658" y="269" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', 'Hiragino Kaku Gothic ProN', 'Yu Gothic', 'Meiryo', sans-serif" fill="#00D4AA">アイテムID</text>
+      <text x="752" y="269" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" fill="#00D4AA">find_id(GameConfig,アイテム,itemId)</text>
+      <text x="658" y="293" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', 'Hiragino Kaku Gothic ProN', 'Yu Gothic', 'Meiryo', sans-serif" fill="#00D4AA">アイテムリスト</text>
+      <text x="758" y="293" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" fill="#00D4AA">split_list(find_id(&#8230;))</text>
+    </g>
+    <g font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', 'Hiragino Kaku Gothic ProN', 'Yu Gothic', 'Meiryo', sans-serif"
+       font-size="13" fill="#8A9A93">
+      <text x="1020" y="125">整数エイリアス</text>
+      <text x="1020" y="149">文字列エイリアス</text>
+      <text x="1020" y="173">文字列列挙</text>
+      <text x="1020" y="197">アイコンパス自動連結</text>
+      <text x="1020" y="221">1次元整数リスト</text>
+      <text x="1020" y="245">浮動小数エイリアス</text>
+      <text x="1020" y="269">シート間参照（単値）</text>
+      <text x="1020" y="293">参照リスト、# 区切り</text>
+    </g>
+  </g>
+
+  <!-- ============ legend strip ============ -->
+  <g id="legend" text-anchor="middle"
+     font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', 'Hiragino Kaku Gothic ProN', 'Yu Gothic', 'Meiryo', sans-serif">
+    <text x="600" y="332" font-size="14">
+      <tspan font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" fill="#00D4AA">Sheet</tspan><tspan fill="#8A9A93"> — データシート名 &#183; </tspan><tspan font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" fill="#00D4AA">File</tspan><tspan fill="#8A9A93"> — 出力ファイル名、拡張子が形式を決定 &#183; </tspan><tspan font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" fill="#00D4AA">Platform</tspan><tspan fill="#8A9A93"> — c クライアント / s サーバー / cs 両端。ヘッダー行は省略可</tspan>
+    </text>
+    <text x="600" y="358" font-size="13" fill="#55665E">TypeDefinition.xlsx に 5 シートを集約。アイテム / 報酬 を業務ブックにコピーすれば実行可能。itemId は純 ID 出力のため固定 int。</text>
+  </g>
+
+  <!-- ============ teaching worksheets panel ============ -->
+  <g id="data-sheet">
+    <rect x="48" y="376" width="1104" height="492" rx="12" fill="#111815" stroke="#1F2A26"/>
+    <g transform="translate(64 392)">
+      <rect width="15" height="15" rx="3" fill="none" stroke="#00D4AA" stroke-width="1.5"/>
+      <path d="M5 0V15 M0 5H15" stroke="#00D4AA" stroke-width="1"/>
+    </g>
+    <text x="88" y="406" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', 'Hiragino Kaku Gothic ProN', 'Yu Gothic', 'Meiryo', sans-serif"
+          font-size="16" font-weight="600" fill="#E8F5F0">TypeDefinition.xlsx — アイテム / 報酬 学習シート</text>
+
+    <!-- ===== アイテム ===== -->
+    <rect x="168" y="422" width="58" height="24" rx="6" fill="#00D4AA"/>
+    <text x="197" y="438" text-anchor="middle" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', 'Hiragino Kaku Gothic ProN', 'Yu Gothic', 'Meiryo', sans-serif"
+          font-size="13" font-weight="700" fill="#0A0F0D">アイテム</text>
+
+    <rect x="168" y="456" width="640" height="112" fill="#0D1310"/>
+    <rect x="678" y="456" width="130" height="168" fill="#00D4AA" fill-opacity="0.05"/>
+
+    <g stroke="#1F2A26" stroke-width="1">
+      <path d="M168 456H808 M168 484H808 M168 512H808 M168 540H808 M168 568H808 M168 596H808 M168 624H808"/>
+      <path d="M168 456V624 M318 456V624 M538 456V624 M678 456V624 M808 456V624"/>
+    </g>
+
+    <g font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', 'Hiragino Kaku Gothic ProN', 'Yu Gothic', 'Meiryo', sans-serif"
+       font-size="13" fill="#55665E">
+      <text x="60" y="475">&#9312; フィールド名</text>
+      <text x="78" y="503">&#9313; 型+制約</text>
+      <text x="99" y="533">&#9314; 出力先</text>
+      <text x="112" y="559">&#9315; 説明</text>
+      <text x="99" y="601">データ行 &#8594;</text>
+    </g>
+
+    <g font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="15"
+       font-weight="600" fill="#E8F5F0">
+      <text x="180" y="475">itemId</text>
+      <text x="330" y="475">name</text>
+      <text x="550" y="475">quality</text>
+      <text x="690" y="475">icon</text>
+    </g>
+    <g font-size="13" fill="#00D4AA">
+      <text x="176" y="503" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">int+unique()</text>
+      <text x="326" y="503" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">文字列+required()+unique()</text>
+      <text x="546" y="503" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', 'Hiragino Kaku Gothic ProN', 'Yu Gothic', 'Meiryo', sans-serif">品質</text>
+      <text x="686" y="503" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', 'Hiragino Kaku Gothic ProN', 'Yu Gothic', 'Meiryo', sans-serif">アイコンパス</text>
+    </g>
+    <g font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="13"
+       font-weight="700" text-anchor="middle">
+      <rect x="176" y="517" width="40" height="22" rx="6" fill="#00D4AA"/>
+      <text x="196" y="533" fill="#0A0F0D">CS</text>
+      <rect x="326" y="517" width="40" height="22" rx="6" fill="#00D4AA"/>
+      <text x="346" y="533" fill="#0A0F0D">CS</text>
+      <rect x="546" y="517" width="40" height="22" rx="6" fill="#00D4AA"/>
+      <text x="566" y="533" fill="#0A0F0D">CS</text>
+      <rect x="686" y="517" width="40" height="22" rx="6" fill="none" stroke="#00D4AA" stroke-width="1.5"/>
+      <text x="706" y="533" fill="#00D4AA">C</text>
+    </g>
+    <g font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', 'Hiragino Kaku Gothic ProN', 'Yu Gothic', 'Meiryo', sans-serif"
+       font-size="14" fill="#8A9A93">
+      <text x="180" y="559">一意のアイテム ID</text>
+      <text x="330" y="559">必須かつ一意の表示名</text>
+      <text x="550" y="559">三択の列挙</text>
+      <text x="690" y="551" font-size="12">クライアント専用</text>
+      <text x="690" y="567" font-size="12">アイコンパス</text>
+    </g>
+    <g font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="14" fill="#E8F5F0">
+      <text x="178" y="587">1001</text>
+      <text x="328" y="587">Bronze Sword</text>
+      <text x="548" y="587">green</text>
+      <text x="688" y="587">sword</text>
+      <text x="178" y="615">1002</text>
+      <text x="328" y="615">Iron Shield</text>
+      <text x="548" y="615">blue</text>
+      <text x="688" y="615">shield</text>
+    </g>
+
+    <!-- ===== 報酬 ===== -->
+    <rect x="168" y="642" width="58" height="24" rx="6" fill="#00D4AA"/>
+    <text x="197" y="658" text-anchor="middle" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', 'Hiragino Kaku Gothic ProN', 'Yu Gothic', 'Meiryo', sans-serif"
+          font-size="13" font-weight="700" fill="#0A0F0D">報酬</text>
+
+    <rect x="168" y="676" width="910" height="112" fill="#0D1310"/>
+    <rect x="508" y="676" width="420" height="168" fill="#00D4AA" fill-opacity="0.05"/>
+    <rect x="928" y="676" width="150" height="168" fill="#8A9A93" fill-opacity="0.06"/>
+
+    <g stroke="#1F2A26" stroke-width="1">
+      <path d="M168 676H1078 M168 704H1078 M168 732H1078 M168 760H1078 M168 788H1078 M168 816H1078 M168 844H1078"/>
+      <path d="M168 676V844 M308 676V844 M508 676V844 M708 676V844 M928 676V844 M1078 676V844"/>
+    </g>
+
+    <g font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', 'Hiragino Kaku Gothic ProN', 'Yu Gothic', 'Meiryo', sans-serif"
+       font-size="13" fill="#55665E">
+      <text x="60" y="695">&#9312; フィールド名</text>
+      <text x="78" y="723">&#9313; 型+制約</text>
+      <text x="99" y="753">&#9314; 出力先</text>
+      <text x="112" y="779">&#9315; 説明</text>
+      <text x="99" y="821">データ行 &#8594;</text>
+    </g>
+
+    <g font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="15"
+       font-weight="600" fill="#E8F5F0">
+      <text x="180" y="695">rewardId</text>
+      <text x="320" y="695">primaryItemId</text>
+      <text x="520" y="695">itemIds</text>
+      <text x="720" y="695">weights</text>
+      <text x="940" y="695">rate</text>
+    </g>
+    <g font-size="13" fill="#00D4AA">
+      <text x="176" y="723" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">整数+unique()</text>
+      <text x="316" y="723" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">アイテムID+required()</text>
+      <text x="516" y="723" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">アイテムリスト+len(1,3)</text>
+      <text x="716" y="723" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">整数リスト+equalLen(itemIds)</text>
+      <text x="936" y="723" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">浮動小数+range(0,1)</text>
+    </g>
+    <g font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="13"
+       font-weight="700" text-anchor="middle">
+      <rect x="176" y="737" width="40" height="22" rx="6" fill="#00D4AA"/>
+      <text x="196" y="753" fill="#0A0F0D">CS</text>
+      <rect x="316" y="737" width="40" height="22" rx="6" fill="#00D4AA"/>
+      <text x="336" y="753" fill="#0A0F0D">CS</text>
+      <rect x="516" y="737" width="40" height="22" rx="6" fill="none" stroke="#00D4AA" stroke-width="1.5"/>
+      <text x="536" y="753" fill="#00D4AA">C</text>
+      <rect x="716" y="737" width="40" height="22" rx="6" fill="none" stroke="#00D4AA" stroke-width="1.5"/>
+      <text x="736" y="753" fill="#00D4AA">C</text>
+      <rect x="936" y="737" width="40" height="22" rx="6" fill="none" stroke="#8A9A93" stroke-width="1.5"/>
+      <text x="956" y="753" fill="#8A9A93">S</text>
+    </g>
+    <g font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', 'Hiragino Kaku Gothic ProN', 'Yu Gothic', 'Meiryo', sans-serif"
+       font-size="14" fill="#8A9A93">
+      <text x="180" y="779">一意の報酬 ID</text>
+      <text x="320" y="779">アイテム.itemId を参照</text>
+      <text x="520" y="779">アイテム ID リスト</text>
+      <text x="720" y="779">itemIds と同じ長さ</text>
+      <text x="940" y="770" font-size="12">サーバー専用の</text>
+      <text x="940" y="786" font-size="12">閉区間確率</text>
+    </g>
+    <g font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="14" fill="#E8F5F0">
+      <text x="178" y="807">1</text>
+      <text x="318" y="807">1001</text>
+      <text x="518" y="807">1001#1002</text>
+      <text x="718" y="807">70#30</text>
+      <text x="938" y="807">0.25</text>
+      <text x="178" y="835">2</text>
+      <text x="318" y="835">1002</text>
+      <text x="518" y="835">1002</text>
+      <text x="718" y="835">100</text>
+      <text x="938" y="835">1.0</text>
+    </g>
+  </g>
+</svg>

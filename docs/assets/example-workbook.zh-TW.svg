@@ -1,0 +1,271 @@
+<svg xmlns="http://www.w3.org/2000/svg"
+     width="1200" height="892" viewBox="0 0 1200 892"
+     role="img" aria-labelledby="title desc">
+  <title id="title">SheetToConfig 範例活頁簿</title>
+  <desc id="desc">範例結構：TypeDefinition.xlsx 集中包含 CODE、Guide、Examples、物品表、獎勵表 五個分頁；物品表 與 獎勵表 是可複製的教學範例，複製到 GameConfig.xlsx 後由業務 CODE 分頁宣告輸出。欄位名固定英文駝峰，型別使用繁中別名（整數、字串、品質、圖示路徑、物品ID、物品清單等），itemId 保留固定 int，分頁名與欄位說明使用繁體中文。</desc>
+
+  <defs>
+    <pattern id="cellgrid" width="40" height="40" patternUnits="userSpaceOnUse">
+      <path d="M40 0H0V40" fill="none" stroke="#E8F5F0" stroke-opacity="0.035" stroke-width="1"/>
+    </pattern>
+  </defs>
+
+  <rect width="1200" height="892" rx="24" fill="#0A0F0D"/>
+  <rect width="1200" height="892" rx="24" fill="url(#cellgrid)"/>
+
+  <!-- ============ CODE worksheet panel ============ -->
+  <g id="code-sheet">
+    <rect x="48" y="32" width="560" height="284" rx="12" fill="#111815" stroke="#1F2A26"/>
+    <g transform="translate(64 48)">
+      <rect width="15" height="15" rx="3" fill="none" stroke="#00D4AA" stroke-width="1.5"/>
+      <path d="M5 0V15 M0 5H15" stroke="#00D4AA" stroke-width="1"/>
+    </g>
+    <text x="88" y="62" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang TC', 'Microsoft JhengHei', 'PingFang SC', 'Microsoft YaHei', sans-serif"
+          font-size="16" font-weight="600" fill="#E8F5F0">複製執行：GameConfig.xlsx — CODE</text>
+
+    <g stroke="#1F2A26" stroke-width="1">
+      <path d="M64 90H534 M64 128H534 M64 166H534 M64 204H534 M64 242H534 M64 280H534"/>
+      <path d="M64 90V280 M184 90V280 M414 90V280 M534 90V280"/>
+    </g>
+
+    <g font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">
+      <text x="76" y="116" font-size="14" font-weight="600" fill="#8A9A93">Sheet</text>
+      <text x="196" y="116" font-size="14" font-weight="600" fill="#8A9A93">File</text>
+      <text x="426" y="116" font-size="14" font-weight="600" fill="#8A9A93">Platform</text>
+      <g font-size="15" fill="#E8F5F0">
+        <text x="76" y="154" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang TC', 'Microsoft JhengHei', 'PingFang SC', 'Microsoft YaHei', sans-serif">物品表</text>
+        <text x="196" y="154">ItemConfig.json</text>
+        <text x="76" y="192" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang TC', 'Microsoft JhengHei', 'PingFang SC', 'Microsoft YaHei', sans-serif">獎勵表</text>
+        <text x="196" y="192">RewardConfig.json</text>
+        <text x="76" y="230" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang TC', 'Microsoft JhengHei', 'PingFang SC', 'Microsoft YaHei', sans-serif">掉落表</text>
+        <text x="196" y="230">DropConfig.lua</text>
+        <text x="76" y="268" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang TC', 'Microsoft JhengHei', 'PingFang SC', 'Microsoft YaHei', sans-serif">任務表</text>
+        <text x="196" y="268">QuestConfig.pb</text>
+      </g>
+    </g>
+
+    <g font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="13"
+       font-weight="700" text-anchor="middle">
+      <rect x="426" y="136" width="40" height="22" rx="6" fill="#00D4AA"/>
+      <text x="446" y="152" fill="#0A0F0D">cs</text>
+      <rect x="426" y="174" width="40" height="22" rx="6" fill="#00D4AA"/>
+      <text x="446" y="190" fill="#0A0F0D">cs</text>
+      <rect x="426" y="212" width="40" height="22" rx="6" fill="none" stroke="#8A9A93" stroke-width="1.5"/>
+      <text x="446" y="228" fill="#8A9A93">s</text>
+      <rect x="426" y="250" width="40" height="22" rx="6" fill="none" stroke="#8A9A93" stroke-width="1.5"/>
+      <text x="446" y="266" fill="#8A9A93">s</text>
+    </g>
+  </g>
+
+  <!-- ============ TypeDefinition panel ============ -->
+  <g id="type-definition">
+    <rect x="632" y="32" width="520" height="284" rx="12" fill="#111815" stroke="#1F2A26"/>
+    <g transform="translate(648 48)">
+      <rect width="15" height="15" rx="3" fill="none" stroke="#00D4AA" stroke-width="1.5"/>
+      <path d="M5 0V15 M0 5H15" stroke="#00D4AA" stroke-width="1"/>
+    </g>
+    <text x="672" y="62" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang TC', 'Microsoft JhengHei', 'PingFang SC', 'Microsoft YaHei', sans-serif"
+          font-size="16" font-weight="600" fill="#E8F5F0">TypeDefinition.xlsx</text>
+
+    <!-- reference types -->
+    <rect x="648" y="252" width="500" height="48" fill="#00D4AA" fill-opacity="0.05"/>
+
+    <g stroke="#1F2A26" stroke-width="1">
+      <path d="M648 84H1148 M648 108H1148 M648 132H1148 M648 156H1148 M648 180H1148 M648 204H1148 M648 228H1148 M648 252H1148 M648 276H1148 M648 300H1148"/>
+      <path d="M648 84V300 M748 84V300 M1010 84V300 M1148 84V300"/>
+    </g>
+
+    <g font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang TC', 'Microsoft JhengHei', 'PingFang SC', 'Microsoft YaHei', sans-serif"
+       font-size="13" font-weight="600" fill="#8A9A93">
+      <text x="658" y="100">型別名</text>
+      <text x="758" y="100">轉換函式</text>
+      <text x="1020" y="100">說明 / 範例</text>
+    </g>
+
+    <g font-size="13">
+      <text x="658" y="125" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang TC', 'Microsoft JhengHei', 'PingFang SC', 'Microsoft YaHei', sans-serif" fill="#E8F5F0">整數</text>
+      <text x="758" y="125" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" fill="#8A9A93">int</text>
+      <text x="658" y="149" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang TC', 'Microsoft JhengHei', 'PingFang SC', 'Microsoft YaHei', sans-serif" fill="#E8F5F0">字串</text>
+      <text x="758" y="149" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" fill="#8A9A93">string</text>
+      <text x="658" y="173" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang TC', 'Microsoft JhengHei', 'PingFang SC', 'Microsoft YaHei', sans-serif" fill="#00D4AA">品質</text>
+      <text x="758" y="173" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" fill="#00D4AA">qualityEnum</text>
+      <text x="658" y="197" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang TC', 'Microsoft JhengHei', 'PingFang SC', 'Microsoft YaHei', sans-serif" fill="#00D4AA">圖示路徑</text>
+      <text x="758" y="197" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" fill="#00D4AA">iconPath</text>
+      <text x="658" y="221" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang TC', 'Microsoft JhengHei', 'PingFang SC', 'Microsoft YaHei', sans-serif" fill="#E8F5F0">整數清單</text>
+      <text x="758" y="221" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" fill="#8A9A93">intList</text>
+      <text x="658" y="245" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang TC', 'Microsoft JhengHei', 'PingFang SC', 'Microsoft YaHei', sans-serif" fill="#E8F5F0">浮點數</text>
+      <text x="758" y="245" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" fill="#8A9A93">float</text>
+      <text x="658" y="269" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang TC', 'Microsoft JhengHei', 'PingFang SC', 'Microsoft YaHei', sans-serif" fill="#00D4AA">物品ID</text>
+      <text x="752" y="269" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" fill="#00D4AA">find_id(GameConfig,物品表,itemId)</text>
+      <text x="658" y="293" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang TC', 'Microsoft JhengHei', 'PingFang SC', 'Microsoft YaHei', sans-serif" fill="#00D4AA">物品清單</text>
+      <text x="758" y="293" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" fill="#00D4AA">split_list(find_id(&#8230;))</text>
+    </g>
+    <g font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang TC', 'Microsoft JhengHei', 'PingFang SC', 'Microsoft YaHei', sans-serif"
+       font-size="13" fill="#8A9A93">
+      <text x="1020" y="125">整數別名</text>
+      <text x="1020" y="149">字串別名</text>
+      <text x="1020" y="173">字串列舉</text>
+      <text x="1020" y="197">自動拼接圖示路徑</text>
+      <text x="1020" y="221">一維整數清單</text>
+      <text x="1020" y="245">浮點數別名</text>
+      <text x="1020" y="269">跨表引用單值</text>
+      <text x="1020" y="293">引用清單，# 分隔</text>
+    </g>
+  </g>
+
+  <!-- ============ legend strip ============ -->
+  <g id="legend" text-anchor="middle"
+     font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang TC', 'Microsoft JhengHei', 'PingFang SC', 'Microsoft YaHei', sans-serif">
+    <text x="600" y="332" font-size="14">
+      <tspan font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" fill="#00D4AA">Sheet</tspan><tspan fill="#8A9A93"> — 資料表名 &#183; </tspan><tspan font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" fill="#00D4AA">File</tspan><tspan fill="#8A9A93"> — 輸出檔名，副檔名決定格式 &#183; </tspan><tspan font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" fill="#00D4AA">Platform</tspan><tspan fill="#8A9A93"> — c 用戶端 / s 伺服器 / cs 兩端；表頭列可省略</tspan>
+    </text>
+    <text x="600" y="358" font-size="13" fill="#55665E">TypeDefinition.xlsx 集中放置五個分頁；物品表 / 獎勵表 複製到普通業務活頁簿後即可執行；itemId 保留固定 int 以匯出純 ID</text>
+  </g>
+
+  <!-- ============ teaching worksheets panel ============ -->
+  <g id="data-sheet">
+    <rect x="48" y="376" width="1104" height="492" rx="12" fill="#111815" stroke="#1F2A26"/>
+    <g transform="translate(64 392)">
+      <rect width="15" height="15" rx="3" fill="none" stroke="#00D4AA" stroke-width="1.5"/>
+      <path d="M5 0V15 M0 5H15" stroke="#00D4AA" stroke-width="1"/>
+    </g>
+    <text x="88" y="406" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang TC', 'Microsoft JhengHei', 'PingFang SC', 'Microsoft YaHei', sans-serif"
+          font-size="16" font-weight="600" fill="#E8F5F0">TypeDefinition.xlsx — 物品表 / 獎勵表 教學分頁</text>
+
+    <!-- ===== 物品表 ===== -->
+    <rect x="168" y="422" width="58" height="24" rx="6" fill="#00D4AA"/>
+    <text x="197" y="438" text-anchor="middle" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang TC', 'Microsoft JhengHei', 'PingFang SC', 'Microsoft YaHei', sans-serif"
+          font-size="13" font-weight="700" fill="#0A0F0D">物品表</text>
+
+    <rect x="168" y="456" width="640" height="112" fill="#0D1310"/>
+    <rect x="678" y="456" width="130" height="168" fill="#00D4AA" fill-opacity="0.05"/>
+
+    <g stroke="#1F2A26" stroke-width="1">
+      <path d="M168 456H808 M168 484H808 M168 512H808 M168 540H808 M168 568H808 M168 596H808 M168 624H808"/>
+      <path d="M168 456V624 M318 456V624 M538 456V624 M678 456V624 M808 456V624"/>
+    </g>
+
+    <g font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang TC', 'Microsoft JhengHei', 'PingFang SC', 'Microsoft YaHei', sans-serif"
+       font-size="13" fill="#55665E">
+      <text x="99" y="475">&#9312; 欄位名</text>
+      <text x="78" y="503">&#9313; 型別+約束</text>
+      <text x="99" y="533">&#9314; 匯出端</text>
+      <text x="112" y="559">&#9315; 說明</text>
+      <text x="99" y="601">資料列 &#8594;</text>
+    </g>
+
+    <g font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="15"
+       font-weight="600" fill="#E8F5F0">
+      <text x="180" y="475">itemId</text>
+      <text x="330" y="475">name</text>
+      <text x="550" y="475">quality</text>
+      <text x="690" y="475">icon</text>
+    </g>
+    <g font-size="13" fill="#00D4AA">
+      <text x="176" y="503" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">int+unique()</text>
+      <text x="326" y="503" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">字串+required()+unique()</text>
+      <text x="546" y="503" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang TC', 'Microsoft JhengHei', 'PingFang SC', 'Microsoft YaHei', sans-serif">品質</text>
+      <text x="686" y="503" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang TC', 'Microsoft JhengHei', 'PingFang SC', 'Microsoft YaHei', sans-serif">圖示路徑</text>
+    </g>
+    <g font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="13"
+       font-weight="700" text-anchor="middle">
+      <rect x="176" y="517" width="40" height="22" rx="6" fill="#00D4AA"/>
+      <text x="196" y="533" fill="#0A0F0D">CS</text>
+      <rect x="326" y="517" width="40" height="22" rx="6" fill="#00D4AA"/>
+      <text x="346" y="533" fill="#0A0F0D">CS</text>
+      <rect x="546" y="517" width="40" height="22" rx="6" fill="#00D4AA"/>
+      <text x="566" y="533" fill="#0A0F0D">CS</text>
+      <rect x="686" y="517" width="40" height="22" rx="6" fill="none" stroke="#00D4AA" stroke-width="1.5"/>
+      <text x="706" y="533" fill="#00D4AA">C</text>
+    </g>
+    <g font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang TC', 'Microsoft JhengHei', 'PingFang SC', 'Microsoft YaHei', sans-serif"
+       font-size="14" fill="#8A9A93">
+      <text x="180" y="559">唯一物品 ID</text>
+      <text x="330" y="559">必填且唯一的顯示名稱</text>
+      <text x="550" y="559">列舉三選一</text>
+      <text x="690" y="559">僅用戶端圖示路徑</text>
+    </g>
+    <g font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="14" fill="#E8F5F0">
+      <text x="178" y="587">1001</text>
+      <text x="328" y="587">Bronze Sword</text>
+      <text x="548" y="587">green</text>
+      <text x="688" y="587">sword</text>
+      <text x="178" y="615">1002</text>
+      <text x="328" y="615">Iron Shield</text>
+      <text x="548" y="615">blue</text>
+      <text x="688" y="615">shield</text>
+    </g>
+
+    <!-- ===== 獎勵表 ===== -->
+    <rect x="168" y="642" width="58" height="24" rx="6" fill="#00D4AA"/>
+    <text x="197" y="658" text-anchor="middle" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang TC', 'Microsoft JhengHei', 'PingFang SC', 'Microsoft YaHei', sans-serif"
+          font-size="13" font-weight="700" fill="#0A0F0D">獎勵表</text>
+
+    <rect x="168" y="676" width="910" height="112" fill="#0D1310"/>
+    <rect x="508" y="676" width="420" height="168" fill="#00D4AA" fill-opacity="0.05"/>
+    <rect x="928" y="676" width="150" height="168" fill="#8A9A93" fill-opacity="0.06"/>
+
+    <g stroke="#1F2A26" stroke-width="1">
+      <path d="M168 676H1078 M168 704H1078 M168 732H1078 M168 760H1078 M168 788H1078 M168 816H1078 M168 844H1078"/>
+      <path d="M168 676V844 M308 676V844 M508 676V844 M708 676V844 M928 676V844 M1078 676V844"/>
+    </g>
+
+    <g font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang TC', 'Microsoft JhengHei', 'PingFang SC', 'Microsoft YaHei', sans-serif"
+       font-size="13" fill="#55665E">
+      <text x="99" y="695">&#9312; 欄位名</text>
+      <text x="78" y="723">&#9313; 型別+約束</text>
+      <text x="99" y="753">&#9314; 匯出端</text>
+      <text x="112" y="779">&#9315; 說明</text>
+      <text x="99" y="821">資料列 &#8594;</text>
+    </g>
+
+    <g font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="15"
+       font-weight="600" fill="#E8F5F0">
+      <text x="180" y="695">rewardId</text>
+      <text x="320" y="695">primaryItemId</text>
+      <text x="520" y="695">itemIds</text>
+      <text x="720" y="695">weights</text>
+      <text x="940" y="695">rate</text>
+    </g>
+    <g font-size="13" fill="#00D4AA">
+      <text x="176" y="723" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">整數+unique()</text>
+      <text x="316" y="723" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">物品ID+required()</text>
+      <text x="516" y="723" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">物品清單+len(1,3)</text>
+      <text x="716" y="723" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">整數清單+equalLen(itemIds)</text>
+      <text x="936" y="723" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">浮點數+range(0,1)</text>
+    </g>
+    <g font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="13"
+       font-weight="700" text-anchor="middle">
+      <rect x="176" y="737" width="40" height="22" rx="6" fill="#00D4AA"/>
+      <text x="196" y="753" fill="#0A0F0D">CS</text>
+      <rect x="316" y="737" width="40" height="22" rx="6" fill="#00D4AA"/>
+      <text x="336" y="753" fill="#0A0F0D">CS</text>
+      <rect x="516" y="737" width="40" height="22" rx="6" fill="none" stroke="#00D4AA" stroke-width="1.5"/>
+      <text x="536" y="753" fill="#00D4AA">C</text>
+      <rect x="716" y="737" width="40" height="22" rx="6" fill="none" stroke="#00D4AA" stroke-width="1.5"/>
+      <text x="736" y="753" fill="#00D4AA">C</text>
+      <rect x="936" y="737" width="40" height="22" rx="6" fill="none" stroke="#8A9A93" stroke-width="1.5"/>
+      <text x="956" y="753" fill="#8A9A93">S</text>
+    </g>
+    <g font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang TC', 'Microsoft JhengHei', 'PingFang SC', 'Microsoft YaHei', sans-serif"
+       font-size="14" fill="#8A9A93">
+      <text x="180" y="779">唯一獎勵 ID</text>
+      <text x="320" y="779">引用物品表 itemId</text>
+      <text x="520" y="779">物品 ID 清單</text>
+      <text x="720" y="779">與 itemIds 等長</text>
+      <text x="940" y="779">僅伺服器閉區間機率</text>
+    </g>
+    <g font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="14" fill="#E8F5F0">
+      <text x="178" y="807">1</text>
+      <text x="318" y="807">1001</text>
+      <text x="518" y="807">1001#1002</text>
+      <text x="718" y="807">70#30</text>
+      <text x="938" y="807">0.25</text>
+      <text x="178" y="835">2</text>
+      <text x="318" y="835">1002</text>
+      <text x="518" y="835">1002</text>
+      <text x="718" y="835">100</text>
+      <text x="938" y="835">1.0</text>
+    </g>
+  </g>
+</svg>

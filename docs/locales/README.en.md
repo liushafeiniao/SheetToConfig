@@ -13,7 +13,7 @@
 
 <p align="center">
   <a href="https://github.com/liushafeiniao/SheetToConfig/actions/workflows/tests.yml"><img alt="Test status" src="https://img.shields.io/github/actions/workflow/status/liushafeiniao/SheetToConfig/tests.yml?branch=main&style=flat-square&label=tests"></a>
-  <a href="https://github.com/liushafeiniao/SheetToConfig/releases"><img alt="Current version 1.0.1" src="https://img.shields.io/badge/version-1.0.1-00D4AA?style=flat-square"></a>
+  <a href="https://github.com/liushafeiniao/SheetToConfig/releases"><img alt="Current version 1.0.2" src="https://img.shields.io/badge/version-1.0.2-00D4AA?style=flat-square"></a>
   <img alt="Windows stable; macOS source and CI" src="https://img.shields.io/badge/platform-Windows%20stable%20%7C%20macOS%20source%2FCI-24292F?style=flat-square">
   <a href="../../LICENSE"><img alt="MIT License" src="https://img.shields.io/badge/license-MIT-24292F?style=flat-square"></a>
 </p>
@@ -108,13 +108,40 @@ Every workbook to be exported must contain a `CODE` worksheet (the name is case-
 
 Parsing is positional by column, and the header row is optional; when the first cell of the first row contains header text such as `Sheet`, that row is skipped automatically.
 
+### A complete example
+
+The figure below gives a quick tour of a complete workbook set. The repository ships a full [`TypeDefinition.xlsx`](../../examples/cross_table/tables/TypeDefinition.xlsx) that bundles five sheets — `CODE`, `Guide`, `Examples`, `Item`, and `Reward` — covering client/server field routing, `unique`, `len`, `equalLen`, `range`, direct cross-table references, and reference lists.
+
+The exporter skips `TypeDefinition.xlsx` as a whole, so the `Item` and `Reward` sheets in it are copyable teaching examples and never generate configuration directly. To actually run them, copy these two sheets into a normal business workbook (such as `GameConfig.xlsx`) and declare the outputs in that workbook's `CODE` sheet.
+
+You can also generate a standalone copy (the output directory must not exist or must be empty; `--force` replaces only this one `TypeDefinition.xlsx`):
+
+```powershell
+python scripts/create_examples.py --output-dir my-example
+```
+
+<p align="center">
+  <img src="../assets/example-workbook.en.svg" width="100%" alt="Example structure: TypeDefinition.xlsx bundles the five sheets CODE, Guide, Examples, Item, and Reward; Item and Reward are copyable teaching examples — after copying them into GameConfig.xlsx, the business CODE sheet declares the output files and targets.">
+</p>
+
+<details>
+<summary><strong>What this example looks like after export</strong> — the same sheet's different artifacts for client and server</summary>
+
+<p align="center">
+  <img src="../assets/example-output.en.svg" width="100%" alt="Export comparison: the client RewardConfig.json contains itemIds and weights but not the S-marked rate; the server RewardConfig.json contains rate but not the C-marked itemIds and weights; CS fields appear in both; the itemList value 1001#1002 becomes the JSON array [1001, 1002], and the intList value 70#30 becomes [70, 30].">
+</p>
+
+`C` and `CS` fields go into the client artifact, `S` and `CS` fields go into the server artifact, and `X` is not exported; separator strings of list types (such as `1001#1002` and `70#30`) are converted to arrays in JSON.
+
+</details>
+
 <details>
 <summary><strong>Data worksheets: four header rows and field target markers</strong> — field name / type / export target / description; the first column is the primary key</summary>
 
 Data sheets use four header rows; data starts on row five:
 
 ```text
-ID           Name        Rewards                    Rate
+itemId       name        itemIds                    rate
 int          string      intList+len(1,5)           float+range(0,1)
 CS           CS          C                          S
 Identifier   Name        Reward list                Server-side rate
@@ -137,9 +164,11 @@ The first column is treated as the primary key and must be a non-empty, unique s
 <details>
 <summary><strong>Types, enums, and constraints</strong> — built-in type list, TypeDefinition extensions, and 11 field constraints</summary>
 
-Built-in types cover `int`, `float`, `string`, `bool`, `bytes`, `text_key`, one- to three-dimensional lists, dictionaries, `path()` paths, and cross-table ID references; the `TypeDefinition.xlsx` generated automatically on first export contains the full list with examples. Complex types can also be extended in TypeDefinition through composed expressions.
+Built-in types cover `int`, `float`, `string`, `bool`, `bytes`, `text_key`, one- to three-dimensional lists, dictionaries, `path()` paths, and cross-workbook ID references. A generated `TypeDefinition.xlsx` contains `CODE` for actual definitions, `Guide` for constraints and boundaries, `Examples` for expressions, and copyable `Item` and `Reward` data-sheet examples.
 
-Enums are defined in the three-column TypeDefinition and add no new schema. `enum(string,white,green,blue)` and `enum(int,1,2,3)` first strictly convert the base type, then validate the allowed values; exported values keep the original string or integer, with no name-to-number mapping.
+`CODE` has four columns: `Name / Convert / Description / Cell example`; only the first two affect conversion, and legacy two- or three-column files remain readable. The English template registers `itemId = find_id(GameConfig,Item,itemId)` in `CODE`; use `itemId+required()` in data-sheet row 2 rather than creating a near-duplicate “reference” type or writing `find_id(...)` there directly. The second `find_id` argument is a display label, not a worksheet selector.
+
+When missing, `TypeDefinition.xlsx` is created once in the current UI language; changing the UI language never rewrites an existing file. Teaching sheets always use English camelCase field names in row 1, localized type names in row 2, and localized explanations in row 4. Constraint keywords such as `required()`, `unique()`, and `range()` stay fixed. The referenced `itemId` source keeps canonical `int`, while fields that reference it use the localized `itemId` type, preserving scalar-ID output compatibility.
 
 Constraints are appended directly after the type, for example:
 
@@ -148,7 +177,7 @@ intList+len(1,5)
 float+range(0,1)
 string+required()+unique()
 string+regex(^item_[0-9]+$)
-intList+equalLen(Weights)
+intList+equalLen(weights)
 ```
 
 Supported constraints include `len`, `len2`, `len3`, `equalLen`, `equalLen2`, `coexist`, `leastOne`, `required` / `notEmpty`, `range`, `regex`, and `unique`.
@@ -330,6 +359,6 @@ Run the full test suite before submitting code. Changes touching export formats,
 
 ## Version and License
 
-- Current version: `1.0.1` in [`sheet_to_config/version.py`](../../sheet_to_config/version.py)
+- Current version: `1.0.2` in [`sheet_to_config/version.py`](../../sheet_to_config/version.py)
 - Changelog: [`CHANGELOG.md`](../../CHANGELOG.md)
 - License: [`MIT`](../../LICENSE)

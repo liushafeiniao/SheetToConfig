@@ -40,20 +40,6 @@ class ConverterError(Exception):
     pass
 
 
-def _reference_id_value(value: Any, field_name: Optional[str] = None) -> Any:
-    """Extract wire/reference IDs from find_id result dictionaries."""
-    if isinstance(value, list):
-        return [_reference_id_value(item, field_name) for item in value]
-    if isinstance(value, dict):
-        if field_name and field_name in value:
-            return value[field_name]
-        for key, item in value.items():
-            if not str(key).startswith("_"):
-                return item
-        return None
-    return value
-
-
 class ExcelConverter:
     """Excel配置转换器"""
 
@@ -216,44 +202,39 @@ class ExcelConverter:
         
         # 执行转换
         try:
-            if value is None or value == "":
-                # 返回默认值
-                result = None
-                if type_name == 'int':
-                    result = 0
-                elif type_name == 'float':
-                    result = 0.0
-                elif type_name in ('str', 'string'):
-                    result = ""
-                elif type_name == 'bool':
-                    result = False
-                elif type_name == 'bytes':
-                    result = b""
-                elif 'list' in type_name.lower() or type_name in ('award',):
-                    result = []
+            with self.type_registry.capture_references() as references:
+                if value is None or value == "":
+                    # 返回默认值
+                    result = None
+                    if type_name == 'int':
+                        result = 0
+                    elif type_name == 'float':
+                        result = 0.0
+                    elif type_name in ('str', 'string'):
+                        result = ""
+                    elif type_name == 'bool':
+                        result = False
+                    elif type_name == 'bytes':
+                        result = b""
+                    elif 'list' in type_name.lower() or type_name in ('award',):
+                        result = []
+                    else:
+                        # 尝试从convert_func获取空值处理
+                        result = convert_func(value)
                 else:
-                    # 尝试从convert_func获取空值处理
                     result = convert_func(value)
-            else:
-                result = convert_func(value)
-            
+
             has_raw_value = value is not None and (
                 not isinstance(value, str) or bool(value.strip())
             )
 
             # 记录ID引用（客户端和服务端都记录，确保完整性）
-            if (
-                self._reference_validator
-                and has_raw_value
-                and hasattr(self, '_current_platform')
-            ):
-                ref_info = self.type_registry.get_reference_info(type_name)
-                if ref_info:
-                    reference_value = _reference_id_value(result, ref_info.get('field'))
+            if self._reference_validator:
+                for reference in references:
                     self._reference_validator.add_reference(
-                        value=reference_value,  # 记录转换后的值（已分割）
-                        target_table=ref_info['table'],
-                        target_field=ref_info['field'],
+                        value=reference['value'],
+                        target_table=reference['table'],
+                        target_field=reference['field'],
                         source_file=self._current_file,
                         source_sheet=self._current_sheet,
                         row=self._current_row,

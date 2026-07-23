@@ -13,7 +13,7 @@
 
 <p align="center">
   <a href="https://github.com/liushafeiniao/SheetToConfig/actions/workflows/tests.yml"><img alt="Estado de las pruebas" src="https://img.shields.io/github/actions/workflow/status/liushafeiniao/SheetToConfig/tests.yml?branch=main&style=flat-square&label=tests"></a>
-  <a href="https://github.com/liushafeiniao/SheetToConfig/releases"><img alt="Versión actual 1.0.1" src="https://img.shields.io/badge/version-1.0.1-00D4AA?style=flat-square"></a>
+  <a href="https://github.com/liushafeiniao/SheetToConfig/releases"><img alt="Versión actual 1.0.2" src="https://img.shields.io/badge/version-1.0.2-00D4AA?style=flat-square"></a>
   <img alt="Windows estable; macOS desde código fuente y CI" src="https://img.shields.io/badge/platform-Windows%20stable%20%7C%20macOS%20source%2FCI-24292F?style=flat-square">
   <a href="../../LICENSE"><img alt="MIT License" src="https://img.shields.io/badge/license-MIT-24292F?style=flat-square"></a>
 </p>
@@ -108,14 +108,41 @@ Cada libro que se vaya a exportar debe contener una hoja `CODE` (el nombre no di
 
 El análisis se hace por posición de columna y la fila de encabezado es opcional; si la primera celda de la primera fila contiene texto de encabezado como `Sheet`, se omite automáticamente.
 
+### Un ejemplo completo
+
+La siguiente imagen sirve para reconocer rápidamente la estructura de un conjunto completo de hojas. El repositorio incluye un [`TypeDefinition.xlsx`](../../examples/cross_table/tables/TypeDefinition.xlsx) completo que reúne cinco hojas —`CODE`, `Guide`, `Examples`, `Objetos` y `Recompensas`— y cubre el reparto de campos entre cliente y servidor, `unique`, `len`, `equalLen`, `range`, referencias directas entre hojas y listas de referencias.
+
+El exportador omite `TypeDefinition.xlsx` por completo, por lo que `Objetos` y `Recompensas` son ejemplos didácticos copiables que no generan configuración por sí solos. Para ejecutarlos de verdad, copia ambas hojas a un libro de negocio normal (como `GameConfig.xlsx`) y declara la salida en la hoja `CODE` de ese libro.
+
+También puedes generar una copia independiente (el directorio de salida debe no existir o estar vacío; `--force` solo reemplaza esta copia de `TypeDefinition.xlsx`):
+
+```powershell
+python scripts/create_examples.py --output-dir my-example
+```
+
+<p align="center">
+  <img src="../assets/example-workbook.es.svg" width="100%" alt="Estructura de ejemplo: TypeDefinition.xlsx reúne cinco hojas — CODE, Guide, Examples, Objetos y Recompensas; Objetos y Recompensas son ejemplos didácticos copiables que, una vez copiados a GameConfig.xlsx, se declaran en la hoja CODE de negocio con el archivo y el destino de salida.">
+</p>
+
+<details>
+<summary><strong>Cómo queda este ejemplo al exportarlo</strong> — productos distintos de la misma hoja en cliente y servidor</summary>
+
+<p align="center">
+  <img src="../assets/example-output.es.svg" width="100%" alt="Comparación de la exportación: el RewardConfig.json de cliente incluye itemIds y weights, pero no el rate marcado S; el RewardConfig.json de servidor incluye rate, pero no los itemIds ni weights marcados C; los campos CS aparecen en ambos; listaObjetos convierte 1001#1002 en el array JSON [1001, 1002] e intList convierte 70#30 en [70, 30].">
+</p>
+
+Los campos `C` y `CS` van al producto de cliente, los campos `S` y `CS` van al de servidor y `X` no se exporta; las cadenas con separador de las listas (como `1001#1002` o `70#30`) se convierten en arrays en JSON.
+
+</details>
+
 <details>
 <summary><strong>Hojas de datos: cuatro filas de encabezado y marcadores de destino</strong> — nombre / tipo / destino / descripción; la primera columna es la clave primaria</summary>
 
 Las hojas de datos usan cuatro filas de encabezado y los datos empiezan en la quinta:
 
 ```text
-ID    Name      Rewards                    Rate
-int   string    intList+len(1,5)           float+range(0,1)
+itemId  name      itemIds                    rate
+int     string    intList+len(1,5)           float+range(0,1)
 CS    CS        C                          S
 Cód.  Nombre    Lista de recompensas       Probabilidad de servidor
 1     Poción    1001#1002                  0.25
@@ -137,9 +164,11 @@ La primera columna se trata como clave primaria: debe ser un valor escalar no va
 <details>
 <summary><strong>Tipos, enums y restricciones</strong> — catálogo de tipos integrados, ampliación con TypeDefinition y 11 restricciones de campo</summary>
 
-Los tipos integrados cubren `int`, `float`, `string`, `bool`, `bytes`, `text_key`, listas de una a tres dimensiones, diccionarios, rutas `path()` y referencias de ID entre tablas; el `TypeDefinition.xlsx` que se genera automáticamente en la primera exportación incluye el catálogo completo con ejemplos. Los tipos complejos también pueden ampliarse en TypeDefinition mediante expresiones compuestas.
+Los tipos integrados cubren `int`, `float`, `string`, `bool`, `bytes`, `text_key`, listas de una a tres dimensiones, diccionarios, rutas `path()` y referencias de ID entre libros. El `TypeDefinition.xlsx` generado contiene `CODE` para las definiciones reales, `Guide` para restricciones y límites, `Examples` para expresiones y las hojas de datos copiables `Objetos` y `Recompensas`.
 
-Los enums se definen en el TypeDefinition de tres columnas, sin añadir ningún esquema nuevo. `enum(string,white,green,blue)` y `enum(int,1,2,3)` convierten primero estrictamente al tipo base y después validan los valores permitidos; el valor exportado conserva la cadena o el entero original, sin mapeo de nombres a números.
+`CODE` tiene cuatro columnas: `Name / Convert / Description / Cell example`; solo las dos primeras afectan a la conversión y los archivos antiguos de dos o tres columnas siguen siendo compatibles. La plantilla española ya registra `idObjeto = find_id(GameConfig,Objetos,itemId)`; use `idObjeto+required()` en la fila 2 y no cree un tipo de referencia casi duplicado ni escriba allí `find_id(...)` directamente. El segundo argumento de `find_id` es una etiqueta visible, no un selector de hoja.
+
+Si falta, `TypeDefinition.xlsx` se crea una sola vez con el idioma actual de la interfaz; cambiar el idioma no modifica un archivo existente. Las hojas didácticas usan campos ingleses camelCase en la fila 1, tipos del idioma actual en la fila 2 y descripciones localizadas en la fila 4. Las restricciones como `required()`, `unique()` y `range()` permanecen fijas. La fuente referenciada `itemId` conserva el `int` canónico para mantener la salida como ID escalar.
 
 Las restricciones se añaden directamente después del tipo, por ejemplo:
 
@@ -148,7 +177,7 @@ intList+len(1,5)
 float+range(0,1)
 string+required()+unique()
 string+regex(^item_[0-9]+$)
-intList+equalLen(Weights)
+intList+equalLen(weights)
 ```
 
 Las restricciones admitidas son `len`, `len2`, `len3`, `equalLen`, `equalLen2`, `coexist`, `leastOne`, `required` / `notEmpty`, `range`, `regex` y `unique`.
@@ -330,6 +359,6 @@ Antes de enviar código, ejecuta primero la suite de pruebas completa. Los cambi
 
 ## Versión y licencia
 
-- Versión actual: `1.0.1` en [`sheet_to_config/version.py`](../../sheet_to_config/version.py)
+- Versión actual: `1.0.2` en [`sheet_to_config/version.py`](../../sheet_to_config/version.py)
 - Historial de cambios: [`CHANGELOG.md`](../../CHANGELOG.md)
 - Licencia de código abierto: [`MIT`](../../LICENSE)

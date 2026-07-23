@@ -23,7 +23,7 @@
 
     <g font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="15" text-anchor="middle">
       <rect x="0" y="272" width="76" height="30" rx="8" fill="#111815" stroke="#1F2A26"/>
-      <text x="38" y="292" fill="#00D4AA">v1.0.1</text>
+      <text x="38" y="292" fill="#00D4AA">v1.0.2</text>
       <rect x="86" y="272" width="140" height="30" rx="8" fill="#111815" stroke="#1F2A26"/>
       <text x="156" y="292" fill="#8A9A93">Windows stable</text>
       <rect x="236" y="272" width="160" height="30" rx="8" fill="#111815" stroke="#1F2A26"/>

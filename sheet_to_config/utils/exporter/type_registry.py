@@ -8,6 +8,8 @@
 """
 
 import os
+from contextlib import contextmanager
+from contextvars import ContextVar
 from typing import Any, Callable, Dict, List, Optional, Set, Tuple
 from openpyxl import load_workbook
 
@@ -47,7 +49,20 @@ class TypeRegistry:
         self._reference_field_cache: Dict[
             Tuple[str, str], Tuple[Optional[str], Tuple[Tuple[str, str], ...]]
         ] = {}
+        self._reference_capture: ContextVar[Optional[List[Dict[str, Any]]]] = (
+            ContextVar(f"reference_capture_{id(self)}", default=None)
+        )
         self._load_type_definition()
+
+    @contextmanager
+    def capture_references(self):
+        """Capture every successfully converted reference in this context."""
+        references: List[Dict[str, Any]] = []
+        token = self._reference_capture.set(references)
+        try:
+            yield references
+        finally:
+            self._reference_capture.reset(token)
     
     def _load_type_definition(self):
         """加载类型定义文件"""
@@ -347,16 +362,36 @@ class TypeRegistry:
         legacy_type = self.get_legacy_referenced_field_type(table_name, id_field)
         scalar_type = self.resolve_referenced_scalar_type(table_name, id_field)
         if legacy_type == 'int':
-            return TypeConverter._convert_find_id_int
-        if legacy_type in ('str', 'string'):
-            return TypeConverter._convert_find_id_str
-        if legacy_type == 'float':
-            return TypeConverter._convert_find_id_float
+            converter = TypeConverter._convert_find_id_int
+        elif legacy_type in ('str', 'string'):
+            converter = TypeConverter._convert_find_id_str
+        elif legacy_type == 'float':
+            converter = TypeConverter._convert_find_id_float
+        else:
+            scalar_converter = self.scalar_converter(scalar_type)
+            converter = lambda value: TypeConverter.find_id_typed(
+                value, table_name, display_label, id_field, scalar_converter
+            )
 
-        scalar_converter = self.scalar_converter(scalar_type)
-        return lambda value: TypeConverter.find_id_typed(
-            value, table_name, display_label, id_field, scalar_converter
-        )
+        def convert_and_capture(value):
+            converted = converter(value)
+            has_raw_value = value is not None and (
+                not isinstance(value, str) or bool(value.strip())
+            )
+            references = self._reference_capture.get()
+            if references is not None and has_raw_value:
+                reference_value = (
+                    converted.get(id_field)
+                    if isinstance(converted, dict) else converted
+                )
+                references.append({
+                    'table': table_name,
+                    'field': id_field,
+                    'value': reference_value,
+                })
+            return converted
+
+        return convert_and_capture
 
     def _create_simple_convert_func(self, type_name: str,
                                     build_chain: Optional[List[str]] = None) -> Callable:

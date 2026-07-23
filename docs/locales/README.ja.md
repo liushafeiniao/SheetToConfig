@@ -13,7 +13,7 @@
 
 <p align="center">
   <a href="https://github.com/liushafeiniao/SheetToConfig/actions/workflows/tests.yml"><img alt="テスト状況" src="https://img.shields.io/github/actions/workflow/status/liushafeiniao/SheetToConfig/tests.yml?branch=main&style=flat-square&label=tests"></a>
-  <a href="https://github.com/liushafeiniao/SheetToConfig/releases"><img alt="現在のバージョン 1.0.1" src="https://img.shields.io/badge/version-1.0.1-00D4AA?style=flat-square"></a>
+  <a href="https://github.com/liushafeiniao/SheetToConfig/releases"><img alt="現在のバージョン 1.0.2" src="https://img.shields.io/badge/version-1.0.2-00D4AA?style=flat-square"></a>
   <img alt="Windows 安定版、macOS はソースと CI" src="https://img.shields.io/badge/platform-Windows%20stable%20%7C%20macOS%20source%2FCI-24292F?style=flat-square">
   <a href="../../LICENSE"><img alt="MIT License" src="https://img.shields.io/badge/license-MIT-24292F?style=flat-square"></a>
 </p>
@@ -108,14 +108,41 @@ python -m pip install -r requirements.txt
 
 解析は列位置で行われ、ヘッダー行は書いても書かなくても構いません。先頭行の最初のセルが `Sheet` などのヘッダー文字列の場合は自動的にスキップされます。
 
+### 完全なサンプル
+
+下図は一式そろった表の構造を素早く把握するためのものです。リポジトリには完全な [`TypeDefinition.xlsx`](../../examples/cross_table/tables/TypeDefinition.xlsx) があり、`CODE`、`Guide`、`Examples`、`アイテム`、`報酬` の 5 シートを集約し、クライアント / サーバーのフィールド振り分け、`unique`、`len`、`equalLen`、`range`、直接のシート間参照と参照リストをカバーしています。
+
+`TypeDefinition.xlsx` はエクスポーターに丸ごとスキップされるため、中の `アイテム`、`報酬` はコピー可能な学習用サンプルであり、直接設定は生成されません。実際に実行する場合は、この 2 シートを `GameConfig.xlsx` など通常の業務ワークブックにコピーし、そのワークブックの `CODE` シートで出力を宣言してください。学習用シートの 1 行目は英語 camelCase のコードフィールド、2 行目は日本語の型名、4 行目は日本語の説明です。
+
+独立したコピーを生成することもできます（出力ディレクトリは未作成または空である必要があります。`--force` もこの `TypeDefinition.xlsx` 1 つだけを置き換えます）：
+
+```powershell
+python scripts/create_examples.py --output-dir my-example
+```
+
+<p align="center">
+  <img src="../assets/example-workbook.ja.svg" width="100%" alt="サンプル構造：TypeDefinition.xlsx に CODE、Guide、Examples、アイテム、報酬 の 5 シートを集約。アイテム と 報酬 はコピー可能な学習用サンプルで、GameConfig.xlsx にコピーした後、業務用 CODE シートが出力ファイルと送信先を宣言します。">
+</p>
+
+<details>
+<summary><strong>このサンプルをエクスポートするとどうなるか</strong> — 同じ表がクライアントとサーバーで異なる成果物になる様子</summary>
+
+<p align="center">
+  <img src="../assets/example-output.ja.svg" width="100%" alt="エクスポート結果の比較：クライアントの RewardConfig.json には itemIds と weights が含まれ、S マークの rate は含まれません。サーバーの RewardConfig.json には rate が含まれ、C マークの itemIds と weights は含まれません。CS フィールドは両端に出力されます。アイテムリスト の 1001#1002 は JSON 配列 [1001, 1002] に、intList の 70#30 は [70, 30] に変換されます。">
+</p>
+
+`C` と `CS` フィールドはクライアント成果物に、`S` と `CS` フィールドはサーバー成果物に出力され、`X` は出力されません。リスト型の区切り文字列（`1001#1002`、`70#30` など）は JSON では配列に変換されます。
+
+</details>
+
 <details>
 <summary><strong>データワークシート：4 行ヘッダーとフィールド端マーカー</strong> — フィールド名 / 型 / 出力先 / 説明、1 列目が主キー</summary>
 
 データシートは 4 行ヘッダーを使い、5 行目からがデータです：
 
 ```text
-ID    Name      Rewards                    Rate
-int   string    intList+len(1,5)           float+range(0,1)
+itemId  name      itemIds                    rate
+int     string    intList+len(1,5)           float+range(0,1)
 CS    CS        C                          S
 番号  名前      報酬リスト                  サーバー確率
 1     回復薬    1001#1002                  0.25
@@ -137,9 +164,11 @@ CS    CS        C                          S
 <details>
 <summary><strong>型・列挙・制約</strong> — 組み込み型一覧、TypeDefinition による拡張と 11 種のフィールド制約</summary>
 
-組み込み型は `int`、`float`、`string`、`bool`、`bytes`、`text_key`、1〜3 次元リスト、辞書、パス `path()`、シート間 ID 参照をカバーします。初回エクスポート時に自動生成される `TypeDefinition.xlsx` に完全な一覧と例が含まれています。複合型も TypeDefinition で組み合わせ式により拡張できます。
+組み込み型は `int`、`float`、`string`、`bool`、`bytes`、`text_key`、1〜3 次元リスト、辞書、`path()`、ワークブック間 ID 参照をカバーします。生成される `TypeDefinition.xlsx` には、実定義の `CODE`、制約と境界を説明する `Guide`、式を示す `Examples`、コピー可能なデータ表例の `アイテム` と `報酬` があります。
 
-列挙は 3 列の TypeDefinition で定義し、新しい Schema は追加しません。`enum(string,white,green,blue)` と `enum(int,1,2,3)` は、まず基底型へ厳密に変換してから許可値を検証します。エクスポート値は元の文字列または整数のままで、名前から数値へのマッピングは行いません。
+`CODE` は `Name / Convert / Description / Cell example` の 4 列で、変換に使うのは先頭 2 列です。旧 2 列・3 列ファイルも読み込めます。日本語テンプレートには `アイテムID = find_id(GameConfig,アイテム,itemId)` が登録済みです。データシート 2 行目では `アイテムID+required()` を使い、近い意味の参照型を重複登録したり `find_id(...)` を直接書いたりしないでください。`find_id` の第 2 引数は表示ラベルであり、シート選択ではありません。
+
+ファイルがない場合、`TypeDefinition.xlsx` は現在の UI 言語で一度だけ生成されます。UI 言語を変更しても既存ファイルは書き換えません。学習用シートの 1 行目は英語 camelCase、2 行目は現在の言語の型名、4 行目は現在の言語の説明です。`required()`、`unique()`、`range()` などの制約キーワードは固定です。参照元の `itemId` はスカラー ID 出力の互換性を保つため標準 `int` のままです。
 
 制約は型の後ろに直接追加します。例：
 
@@ -148,7 +177,7 @@ intList+len(1,5)
 float+range(0,1)
 string+required()+unique()
 string+regex(^item_[0-9]+$)
-intList+equalLen(Weights)
+intList+equalLen(weights)
 ```
 
 サポートされる制約は `len`、`len2`、`len3`、`equalLen`、`equalLen2`、`coexist`、`leastOne`、`required` / `notEmpty`、`range`、`regex`、`unique` です。
@@ -330,6 +359,6 @@ tests/                        自動テスト
 
 ## バージョンとライセンス
 
-- 現在のバージョン：[`sheet_to_config/version.py`](../../sheet_to_config/version.py) の `1.0.1`
+- 現在のバージョン：[`sheet_to_config/version.py`](../../sheet_to_config/version.py) の `1.0.2`
 - 変更履歴：[`CHANGELOG.md`](../../CHANGELOG.md)
 - オープンソースライセンス：[`MIT`](../../LICENSE)

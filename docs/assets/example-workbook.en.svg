@@ -1,0 +1,271 @@
+<svg xmlns="http://www.w3.org/2000/svg"
+     width="1200" height="892" viewBox="0 0 1200 892"
+     role="img" aria-labelledby="title desc">
+  <title id="title">SheetToConfig example workbook</title>
+  <desc id="desc">Example structure: TypeDefinition.xlsx bundles five sheets — CODE, Guide, Examples, Item, and Reward; Item and Reward are copyable teaching examples, declared for output by the business CODE sheet after being copied into GameConfig.xlsx. Field names stay English camelCase, types use English aliases (integer, text, quality, iconAsset, itemId, itemList, and so on), itemId keeps the canonical int, and sheet names and field descriptions are in English.</desc>
+
+  <defs>
+    <pattern id="cellgrid" width="40" height="40" patternUnits="userSpaceOnUse">
+      <path d="M40 0H0V40" fill="none" stroke="#E8F5F0" stroke-opacity="0.035" stroke-width="1"/>
+    </pattern>
+  </defs>
+
+  <rect width="1200" height="892" rx="24" fill="#0A0F0D"/>
+  <rect width="1200" height="892" rx="24" fill="url(#cellgrid)"/>
+
+  <!-- ============ CODE worksheet panel ============ -->
+  <g id="code-sheet">
+    <rect x="48" y="32" width="560" height="284" rx="12" fill="#111815" stroke="#1F2A26"/>
+    <g transform="translate(64 48)">
+      <rect width="15" height="15" rx="3" fill="none" stroke="#00D4AA" stroke-width="1.5"/>
+      <path d="M5 0V15 M0 5H15" stroke="#00D4AA" stroke-width="1"/>
+    </g>
+    <text x="88" y="62" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif"
+          font-size="16" font-weight="600" fill="#E8F5F0">Copy &amp; run: GameConfig.xlsx — CODE</text>
+
+    <g stroke="#1F2A26" stroke-width="1">
+      <path d="M64 90H534 M64 128H534 M64 166H534 M64 204H534 M64 242H534 M64 280H534"/>
+      <path d="M64 90V280 M184 90V280 M414 90V280 M534 90V280"/>
+    </g>
+
+    <g font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">
+      <text x="76" y="116" font-size="14" font-weight="600" fill="#8A9A93">Sheet</text>
+      <text x="196" y="116" font-size="14" font-weight="600" fill="#8A9A93">File</text>
+      <text x="426" y="116" font-size="14" font-weight="600" fill="#8A9A93">Platform</text>
+      <g font-size="15" fill="#E8F5F0">
+        <text x="76" y="154" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif">Item</text>
+        <text x="196" y="154">ItemConfig.json</text>
+        <text x="76" y="192" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif">Reward</text>
+        <text x="196" y="192">RewardConfig.json</text>
+        <text x="76" y="230" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif">Drops</text>
+        <text x="196" y="230">DropConfig.lua</text>
+        <text x="76" y="268" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif">Quests</text>
+        <text x="196" y="268">QuestConfig.pb</text>
+      </g>
+    </g>
+
+    <g font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="13"
+       font-weight="700" text-anchor="middle">
+      <rect x="426" y="136" width="40" height="22" rx="6" fill="#00D4AA"/>
+      <text x="446" y="152" fill="#0A0F0D">cs</text>
+      <rect x="426" y="174" width="40" height="22" rx="6" fill="#00D4AA"/>
+      <text x="446" y="190" fill="#0A0F0D">cs</text>
+      <rect x="426" y="212" width="40" height="22" rx="6" fill="none" stroke="#8A9A93" stroke-width="1.5"/>
+      <text x="446" y="228" fill="#8A9A93">s</text>
+      <rect x="426" y="250" width="40" height="22" rx="6" fill="none" stroke="#8A9A93" stroke-width="1.5"/>
+      <text x="446" y="266" fill="#8A9A93">s</text>
+    </g>
+  </g>
+
+  <!-- ============ TypeDefinition panel ============ -->
+  <g id="type-definition">
+    <rect x="632" y="32" width="520" height="284" rx="12" fill="#111815" stroke="#1F2A26"/>
+    <g transform="translate(648 48)">
+      <rect width="15" height="15" rx="3" fill="none" stroke="#00D4AA" stroke-width="1.5"/>
+      <path d="M5 0V15 M0 5H15" stroke="#00D4AA" stroke-width="1"/>
+    </g>
+    <text x="672" y="62" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif"
+          font-size="16" font-weight="600" fill="#E8F5F0">TypeDefinition.xlsx</text>
+
+    <!-- reference types -->
+    <rect x="648" y="252" width="500" height="48" fill="#00D4AA" fill-opacity="0.05"/>
+
+    <g stroke="#1F2A26" stroke-width="1">
+      <path d="M648 84H1148 M648 108H1148 M648 132H1148 M648 156H1148 M648 180H1148 M648 204H1148 M648 228H1148 M648 252H1148 M648 276H1148 M648 300H1148"/>
+      <path d="M648 84V300 M748 84V300 M1000 84V300 M1148 84V300"/>
+    </g>
+
+    <g font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif"
+       font-size="13" font-weight="600" fill="#8A9A93">
+      <text x="658" y="100">Type</text>
+      <text x="758" y="100">Convert</text>
+      <text x="1010" y="100">Description</text>
+    </g>
+
+    <g font-size="13">
+      <text x="658" y="125" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif" fill="#E8F5F0">integer</text>
+      <text x="758" y="125" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" fill="#8A9A93">int</text>
+      <text x="658" y="149" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif" fill="#E8F5F0">text</text>
+      <text x="758" y="149" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" fill="#8A9A93">string</text>
+      <text x="658" y="173" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif" fill="#00D4AA">quality</text>
+      <text x="758" y="173" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" fill="#00D4AA">qualityEnum</text>
+      <text x="658" y="197" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif" fill="#00D4AA">iconAsset</text>
+      <text x="758" y="197" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" fill="#00D4AA">iconPath</text>
+      <text x="658" y="221" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif" fill="#E8F5F0">integerList</text>
+      <text x="758" y="221" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" fill="#8A9A93">intList</text>
+      <text x="658" y="245" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif" fill="#E8F5F0">number</text>
+      <text x="758" y="245" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" fill="#8A9A93">float</text>
+      <text x="658" y="269" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif" fill="#00D4AA">itemId</text>
+      <text x="752" y="269" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" fill="#00D4AA">find_id(GameConfig,Item,itemId)</text>
+      <text x="658" y="293" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif" fill="#00D4AA">itemList</text>
+      <text x="758" y="293" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" fill="#00D4AA">split_list(find_id(&#8230;))</text>
+    </g>
+    <g font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif"
+       font-size="13" fill="#8A9A93">
+      <text x="1010" y="125">int alias</text>
+      <text x="1010" y="149">string alias</text>
+      <text x="1010" y="173">string enum</text>
+      <text x="1010" y="197">auto-joined icon path</text>
+      <text x="1010" y="221">1-D integer list</text>
+      <text x="1010" y="245">float alias</text>
+      <text x="1010" y="269">cross-sheet ID ref</text>
+      <text x="1010" y="293">ID list, #-separated</text>
+    </g>
+  </g>
+
+  <!-- ============ legend strip ============ -->
+  <g id="legend" text-anchor="middle"
+     font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif">
+    <text x="600" y="332" font-size="14">
+      <tspan font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" fill="#00D4AA">Sheet</tspan><tspan fill="#8A9A93"> — data sheet name &#183; </tspan><tspan font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" fill="#00D4AA">File</tspan><tspan fill="#8A9A93"> — output file; extension sets format &#183; </tspan><tspan font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" fill="#00D4AA">Platform</tspan><tspan fill="#8A9A93"> — c client / s server / cs both; header row optional</tspan>
+    </text>
+    <text x="600" y="358" font-size="13" fill="#55665E">TypeDefinition.xlsx hosts five sheets; copy Item / Reward into a business workbook to run; itemId keeps canonical int to export plain IDs</text>
+  </g>
+
+  <!-- ============ teaching worksheets panel ============ -->
+  <g id="data-sheet">
+    <rect x="48" y="376" width="1104" height="492" rx="12" fill="#111815" stroke="#1F2A26"/>
+    <g transform="translate(64 392)">
+      <rect width="15" height="15" rx="3" fill="none" stroke="#00D4AA" stroke-width="1.5"/>
+      <path d="M5 0V15 M0 5H15" stroke="#00D4AA" stroke-width="1"/>
+    </g>
+    <text x="88" y="406" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif"
+          font-size="16" font-weight="600" fill="#E8F5F0">TypeDefinition.xlsx — Item / Reward teaching sheets</text>
+
+    <!-- ===== Item ===== -->
+    <rect x="168" y="422" width="58" height="24" rx="6" fill="#00D4AA"/>
+    <text x="197" y="438" text-anchor="middle" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif"
+          font-size="13" font-weight="700" fill="#0A0F0D">Item</text>
+
+    <rect x="168" y="456" width="670" height="112" fill="#0D1310"/>
+    <rect x="648" y="456" width="190" height="168" fill="#00D4AA" fill-opacity="0.05"/>
+
+    <g stroke="#1F2A26" stroke-width="1">
+      <path d="M168 456H838 M168 484H838 M168 512H838 M168 540H838 M168 568H838 M168 596H838 M168 624H838"/>
+      <path d="M168 456V624 M318 456V624 M538 456V624 M648 456V624 M838 456V624"/>
+    </g>
+
+    <g font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif"
+       font-size="13" fill="#55665E">
+      <text x="60" y="475">&#9312; Field name</text>
+      <text x="60" y="503">&#9313; Type+rules</text>
+      <text x="60" y="533">&#9314; Target</text>
+      <text x="60" y="559">&#9315; Desc</text>
+      <text x="60" y="601">Data rows &#8594;</text>
+    </g>
+
+    <g font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="15"
+       font-weight="600" fill="#E8F5F0">
+      <text x="180" y="475">itemId</text>
+      <text x="330" y="475">name</text>
+      <text x="550" y="475">quality</text>
+      <text x="660" y="475">icon</text>
+    </g>
+    <g font-size="13" fill="#00D4AA">
+      <text x="176" y="503" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">int+unique()</text>
+      <text x="326" y="503" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">text+required()+unique()</text>
+      <text x="546" y="503" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif">quality</text>
+      <text x="656" y="503" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif">iconAsset</text>
+    </g>
+    <g font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="13"
+       font-weight="700" text-anchor="middle">
+      <rect x="176" y="517" width="40" height="22" rx="6" fill="#00D4AA"/>
+      <text x="196" y="533" fill="#0A0F0D">CS</text>
+      <rect x="326" y="517" width="40" height="22" rx="6" fill="#00D4AA"/>
+      <text x="346" y="533" fill="#0A0F0D">CS</text>
+      <rect x="546" y="517" width="40" height="22" rx="6" fill="#00D4AA"/>
+      <text x="566" y="533" fill="#0A0F0D">CS</text>
+      <rect x="656" y="517" width="40" height="22" rx="6" fill="none" stroke="#00D4AA" stroke-width="1.5"/>
+      <text x="676" y="533" fill="#00D4AA">C</text>
+    </g>
+    <g font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif"
+       font-size="14" fill="#8A9A93">
+      <text x="180" y="559">Unique item ID</text>
+      <text x="330" y="559">Required unique display name</text>
+      <text x="550" y="559">Enum of three</text>
+      <text x="660" y="559">Client-only icon path</text>
+    </g>
+    <g font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="14" fill="#E8F5F0">
+      <text x="178" y="587">1001</text>
+      <text x="328" y="587">Bronze Sword</text>
+      <text x="548" y="587">green</text>
+      <text x="658" y="587">sword</text>
+      <text x="178" y="615">1002</text>
+      <text x="328" y="615">Iron Shield</text>
+      <text x="548" y="615">blue</text>
+      <text x="658" y="615">shield</text>
+    </g>
+
+    <!-- ===== Reward ===== -->
+    <rect x="168" y="642" width="58" height="24" rx="6" fill="#00D4AA"/>
+    <text x="197" y="658" text-anchor="middle" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif"
+          font-size="13" font-weight="700" fill="#0A0F0D">Reward</text>
+
+    <rect x="168" y="676" width="910" height="112" fill="#0D1310"/>
+    <rect x="488" y="676" width="420" height="168" fill="#00D4AA" fill-opacity="0.05"/>
+    <rect x="908" y="676" width="170" height="168" fill="#8A9A93" fill-opacity="0.06"/>
+
+    <g stroke="#1F2A26" stroke-width="1">
+      <path d="M168 676H1078 M168 704H1078 M168 732H1078 M168 760H1078 M168 788H1078 M168 816H1078 M168 844H1078"/>
+      <path d="M168 676V844 M308 676V844 M488 676V844 M668 676V844 M908 676V844 M1078 676V844"/>
+    </g>
+
+    <g font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif"
+       font-size="13" fill="#55665E">
+      <text x="60" y="695">&#9312; Field name</text>
+      <text x="60" y="723">&#9313; Type+rules</text>
+      <text x="60" y="753">&#9314; Target</text>
+      <text x="60" y="779">&#9315; Desc</text>
+      <text x="60" y="821">Data rows &#8594;</text>
+    </g>
+
+    <g font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="15"
+       font-weight="600" fill="#E8F5F0">
+      <text x="180" y="695">rewardId</text>
+      <text x="320" y="695">primaryItemId</text>
+      <text x="500" y="695">itemIds</text>
+      <text x="680" y="695">weights</text>
+      <text x="920" y="695">rate</text>
+    </g>
+    <g font-size="13" fill="#00D4AA">
+      <text x="176" y="723" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">integer+unique()</text>
+      <text x="316" y="723" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">itemId+required()</text>
+      <text x="496" y="723" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">itemList+len(1,3)</text>
+      <text x="676" y="723" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">integerList+equalLen(itemIds)</text>
+      <text x="916" y="723" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">number+range(0,1)</text>
+    </g>
+    <g font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="13"
+       font-weight="700" text-anchor="middle">
+      <rect x="176" y="737" width="40" height="22" rx="6" fill="#00D4AA"/>
+      <text x="196" y="753" fill="#0A0F0D">CS</text>
+      <rect x="316" y="737" width="40" height="22" rx="6" fill="#00D4AA"/>
+      <text x="336" y="753" fill="#0A0F0D">CS</text>
+      <rect x="496" y="737" width="40" height="22" rx="6" fill="none" stroke="#00D4AA" stroke-width="1.5"/>
+      <text x="516" y="753" fill="#00D4AA">C</text>
+      <rect x="676" y="737" width="40" height="22" rx="6" fill="none" stroke="#00D4AA" stroke-width="1.5"/>
+      <text x="696" y="753" fill="#00D4AA">C</text>
+      <rect x="916" y="737" width="40" height="22" rx="6" fill="none" stroke="#8A9A93" stroke-width="1.5"/>
+      <text x="936" y="753" fill="#8A9A93">S</text>
+    </g>
+    <g font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif"
+       font-size="14" fill="#8A9A93">
+      <text x="180" y="779">Unique reward ID</text>
+      <text x="320" y="779">References Item.itemId</text>
+      <text x="500" y="779">Item ID list</text>
+      <text x="680" y="779">Matches itemIds length</text>
+      <text x="916" y="779">Server-only closed range</text>
+    </g>
+    <g font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" font-size="14" fill="#E8F5F0">
+      <text x="178" y="807">1</text>
+      <text x="318" y="807">1001</text>
+      <text x="498" y="807">1001#1002</text>
+      <text x="678" y="807">70#30</text>
+      <text x="918" y="807">0.25</text>
+      <text x="178" y="835">2</text>
+      <text x="318" y="835">1002</text>
+      <text x="498" y="835">1002</text>
+      <text x="678" y="835">100</text>
+      <text x="918" y="835">1.0</text>
+    </g>
+  </g>
+</svg>
