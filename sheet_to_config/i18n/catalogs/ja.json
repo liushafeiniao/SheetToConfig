@@ -283,7 +283,7 @@
   "about.update_downloading": "v{version} をダウンロードしています。プログラムを閉じないでください。",
   "about.update_downloading_progress": "v{version} をダウンロードしています（{percent}%）。プログラムを閉じないでください。",
   "about.update_up_to_date": "すでに最新版（v{version}）を使用しています。",
-  "about.update_available": "新しいバージョン v{version} があります。ダウンロードして自動インストールしますか？インストール前に終了し、自動的に再起動します。",
+  "about.update_available": "新しいバージョン v{version} があります。ダウンロードを開始します。",
   "about.update_manual_only": "新しいバージョン v{version} がありますが、自動更新は現在 Windows x64 のみ対応しています。GitHub Releases から手動でダウンロードしてください。",
   "about.update_failed": "更新の確認またはインストールに失敗しました。しばらくしてから再試行してください。",
   "about.update_restarting": "v{version} をダウンロードして整合性を確認しました。プログラムを終了して自動的に再起動します。",

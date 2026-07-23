@@ -80,7 +80,7 @@ class UpdaterTests(unittest.TestCase):
         self.assertEqual(123, release.asset_size)
 
     def test_fetch_latest_release_returns_none_for_current_version(self):
-        response = _Response(json.dumps(_release_payload("1.0.3")).encode("utf-8"))
+        response = _Response(json.dumps(_release_payload("1.0.4")).encode("utf-8"))
         opener = Mock(return_value=response)
 
         self.assertIsNone(fetch_latest_release(opener=opener))

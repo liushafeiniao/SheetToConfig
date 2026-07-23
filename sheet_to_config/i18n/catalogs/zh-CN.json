@@ -283,7 +283,7 @@
   "about.update_downloading": "正在下载 v{version}，请不要关闭程序。",
   "about.update_downloading_progress": "正在下载 v{version}（{percent}%），请不要关闭程序。",
   "about.update_up_to_date": "当前已经是最新版本（v{version}）。",
-  "about.update_available": "发现新版本 v{version}。是否下载并自动安装？程序会在安装前退出并自动重启。",
+  "about.update_available": "发现新版本 v{version}，正在开始下载。",
   "about.update_manual_only": "发现新版本 v{version}，但自动更新仅支持 Windows x64。请从 GitHub Releases 手动下载。",
   "about.update_failed": "检查或安装更新失败，请稍后重试。",
   "about.update_restarting": "v{version} 已下载并通过完整性校验，程序将关闭并自动重启。",

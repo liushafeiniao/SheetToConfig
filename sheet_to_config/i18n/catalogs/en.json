@@ -283,7 +283,7 @@
   "about.update_downloading": "Downloading v{version}; please do not close the program.",
   "about.update_downloading_progress": "Downloading v{version} ({percent}%); please do not close the program.",
   "about.update_up_to_date": "You are already using the latest version (v{version}).",
-  "about.update_available": "Version v{version} is available. Download and install it automatically? The program will exit before installation and restart automatically.",
+  "about.update_available": "Version v{version} is available. Starting the download.",
   "about.update_manual_only": "Version v{version} is available, but automatic updates currently support Windows x64 only. Download it manually from GitHub Releases.",
   "about.update_failed": "The update could not be checked or installed. Please try again later.",
   "about.update_restarting": "v{version} was downloaded and verified. The program will close and restart automatically.",

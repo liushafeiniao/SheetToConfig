@@ -283,7 +283,7 @@
   "about.update_downloading": "Descargando v{version}; no cierres el programa.",
   "about.update_downloading_progress": "Descargando v{version} ({percent}%); no cierres el programa.",
   "about.update_up_to_date": "Ya utilizas la última versión (v{version}).",
-  "about.update_available": "Hay una nueva versión, v{version}. ¿Quieres descargarla e instalarla automáticamente? El programa se cerrará antes de instalarla y se reiniciará automáticamente.",
+  "about.update_available": "Hay una nueva versión, v{version}. Se iniciará la descarga.",
   "about.update_manual_only": "Hay una nueva versión, v{version}, pero las actualizaciones automáticas solo son compatibles con Windows x64. Descárgala manualmente desde GitHub Releases.",
   "about.update_failed": "No se pudo comprobar o instalar la actualización. Inténtalo de nuevo más tarde.",
   "about.update_restarting": "v{version} se descargó y verificó correctamente. El programa se cerrará y reiniciará automáticamente.",

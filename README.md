@@ -13,7 +13,7 @@
 
 <p align="center">
   <a href="https://github.com/liushafeiniao/SheetToConfig/actions/workflows/tests.yml"><img alt="测试状态" src="https://img.shields.io/github/actions/workflow/status/liushafeiniao/SheetToConfig/tests.yml?branch=main&style=flat-square&label=tests"></a>
-  <a href="https://github.com/liushafeiniao/SheetToConfig/releases"><img alt="当前版本 1.0.3" src="https://img.shields.io/badge/version-1.0.3-00D4AA?style=flat-square"></a>
+  <a href="https://github.com/liushafeiniao/SheetToConfig/releases"><img alt="当前版本 1.0.4" src="https://img.shields.io/badge/version-1.0.4-00D4AA?style=flat-square"></a>
   <img alt="Windows 稳定版；macOS 源码与 CI" src="https://img.shields.io/badge/platform-Windows%20stable%20%7C%20macOS%20source%2FCI-24292F?style=flat-square">
   <a href="LICENSE"><img alt="MIT License" src="https://img.shields.io/badge/license-MIT-24292F?style=flat-square"></a>
 </p>
@@ -361,6 +361,6 @@ tests/                        自动化测试
 
 ## 版本与许可证
 
-- 当前版本：[`sheet_to_config/version.py`](sheet_to_config/version.py) 中的 `1.0.3`
+- 当前版本：[`sheet_to_config/version.py`](sheet_to_config/version.py) 中的 `1.0.4`
 - 变更记录：[`CHANGELOG.md`](CHANGELOG.md)
 - 开源许可证：[`MIT`](LICENSE)

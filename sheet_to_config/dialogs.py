@@ -7,7 +7,8 @@ from PyQt5.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QGridLayout, QFormLayout,
     QPushButton, QLabel, QLineEdit, QListWidget, QListWidgetItem,
     QTextEdit, QScrollArea, QFrame, QFileDialog, QMessageBox,
-    QWidget, QButtonGroup, QRadioButton, QCheckBox, QTabWidget, QApplication
+    QWidget, QButtonGroup, QRadioButton, QCheckBox, QTabWidget, QApplication,
+    QProgressBar,
 )
 from PyQt5.QtCore import Qt, QSize
 from PyQt5 import QtCore
@@ -1029,7 +1030,7 @@ class AboutDialog(QDialog):
         self._update_worker = None
         self._update_release = None
         self._update_button = None
-        self._update_hint = None
+        self._update_progress = None
         self._close_button = None
         self._pending_update_release = None
         self._allow_update_close = False
@@ -1105,60 +1106,62 @@ class AboutDialog(QDialog):
 
         layout.addWidget(self._make_divider())
 
-        # GitHub 仓库
-        gh_row = QHBoxLayout()
-        gh_label = QLabel(tr('about.github'))
-        gh_label.setStyleSheet(f"color: {self.colors['text_dim']};")
-        gh_link = QLabel(f'<a href="{GITHUB_URL}" style="color: {self.colors["accent"]};">{GITHUB_URL}</a>')
-        gh_link.setOpenExternalLinks(True)
-        gh_row.addWidget(gh_label)
-        gh_row.addWidget(gh_link, 1)
-        layout.addLayout(gh_row)
-
-        # 检查更新按钮
+        # 更新与项目主页
         update_btn = QPushButton(f"  {tr('about.check_updates')}")
         update_btn.setIcon(_icons.get_icon('export', self.colors['text_light'], 14))
         update_btn.setToolTip(tr('about.update_tooltip'))
         update_btn.clicked.connect(self._check_for_updates)
         self._update_button = update_btn
-        layout.addWidget(update_btn, 0, Qt.AlignLeft)
 
-        # 更新方式说明
-        update_hint = QLabel(tr('about.update_hint'))
-        update_hint.setWordWrap(True)
-        update_hint.setStyleSheet(f"color: {self.colors['text_dim']}; font-size: 11px;")
-        self._update_hint = update_hint
-        layout.addWidget(update_hint)
+        gh_link = QLabel(
+            f'<a href="{GITHUB_URL}" style="color: {self.colors["accent"]};">GitHub</a>'
+        )
+        gh_link.setOpenExternalLinks(True)
+        gh_link.setToolTip(GITHUB_URL)
+        actions_row = QHBoxLayout()
+        actions_row.addStretch()
+        actions_row.addWidget(update_btn)
+        actions_row.addWidget(gh_link)
+        actions_row.addStretch()
+        layout.addLayout(actions_row)
+
+        update_progress = QProgressBar()
+        update_progress.setRange(0, 100)
+        update_progress.setValue(0)
+        update_progress.setTextVisible(True)
+        update_progress.setVisible(False)
+        update_progress.setStyleSheet(
+            f"QProgressBar {{ color: {self.colors['text_light']}; "
+            f"border: 1px solid {self.colors['border']}; border-radius: 4px; "
+            f"background: {self.colors['bg_medium']}; height: 16px; }} "
+            f"QProgressBar::chunk {{ background: {self.colors['accent']}; "
+            "border-radius: 3px; }}"
+        )
+        self._update_progress = update_progress
+        layout.addWidget(update_progress)
 
         layout.addWidget(self._make_divider())
-
-        # 开源协议
-        license_label = QLabel(tr('about.license'))
-        license_label.setStyleSheet(f"color: {self.colors['text_dim']}; font-size: 12px;")
-        layout.addWidget(license_label)
 
         layout.addStretch()
         return page
 
-    def _set_update_busy(self, busy: bool, text: str = ''):
+    def _set_update_busy(self, busy: bool):
         if self._update_button is not None:
             self._update_button.setEnabled(not busy)
         if self._close_button is not None:
             self._close_button.setEnabled(not busy)
-        if text and self._update_hint is not None:
-            self._update_hint.setText(text)
+        if self._update_progress is not None:
+            self._update_progress.setVisible(busy)
+            if busy and self._update_release is not None:
+                self._update_progress.setRange(0, 100)
+                self._update_progress.setValue(0)
+            elif busy:
+                self._update_progress.setRange(0, 0)
 
     def _start_update_task(self, action: str, release: ReleaseInfo | None = None):
         if self._update_thread is not None:
             return
-        self._set_update_busy(
-            True,
-            tr(
-                'about.update_checking'
-                if action == 'check' else 'about.update_downloading',
-                version=release.version if release else __version__,
-            ),
-        )
+        self._set_update_busy(True)
         thread = QtCore.QThread(self)
         worker = _UpdateWorker(action, release)
         worker.moveToThread(thread)
@@ -1182,17 +1185,17 @@ class AboutDialog(QDialog):
             self._start_update_task('download', release)
 
     def _on_update_progress(self, current: int, total: int):
-        if self._update_hint is None or self._update_release is None:
+        if (
+            self._update_progress is None
+            or self._update_release is None
+        ):
             return
         if total > 0:
             percent = min(100, int(current * 100 / total))
-            self._update_hint.setText(
-                tr(
-                    'about.update_downloading_progress',
-                    version=self._update_release.version,
-                    percent=percent,
-                )
-            )
+            self._update_progress.setRange(0, 100)
+            self._update_progress.setValue(percent)
+        else:
+            self._update_progress.setRange(0, 0)
 
     def _check_for_updates(self):
         self._update_release = None
@@ -1224,19 +1227,8 @@ class AboutDialog(QDialog):
                     tr('about.update_manual_only', version=release.version),
                 )
                 return
-            answer = QMessageBox.question(
-                self,
-                tr('about.title'),
-                tr('about.update_available', version=release.version),
-                QMessageBox.Yes | QMessageBox.No,
-                QMessageBox.Yes,
-            )
-            if answer == QMessageBox.Yes:
-                self._pending_update_release = release
-                self._set_update_busy(
-                    True,
-                    tr('about.update_downloading', version=release.version),
-                )
+            self._pending_update_release = release
+            self._set_update_busy(True)
             return
 
         self._set_update_busy(False)
@@ -1258,11 +1250,6 @@ class AboutDialog(QDialog):
                 self, tr('about.title'), tr('about.update_failed')
             )
             return
-        QMessageBox.information(
-            self,
-            tr('about.title'),
-            tr('about.update_restarting', version=package.release.version),
-        )
         self._allow_update_close = True
         self.accept()
         application = QApplication.instance()
@@ -1274,12 +1261,6 @@ class AboutDialog(QDialog):
             event.ignore()
             return
         super().closeEvent(event)
-
-    @staticmethod
-    def _open_url(url):
-        from PyQt5.QtGui import QDesktopServices
-        from PyQt5.QtCore import QUrl
-        QDesktopServices.openUrl(QUrl(url))
 
     def _build_donate_tab(self):
         """支持作者页：微信 / 支付宝收款码"""

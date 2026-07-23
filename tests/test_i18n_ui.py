@@ -6,14 +6,16 @@ from unittest.mock import patch
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
-from PyQt5.QtWidgets import QApplication, QMainWindow, QMessageBox
+from PyQt5.QtWidgets import QApplication, QMainWindow, QMessageBox, QProgressBar
 
 from sheet_to_config import i18n
 from SheetToConfig import SheetToConfigWindow
-from sheet_to_config.dialogs import ProjectEditDialog
+from sheet_to_config.dialogs import AboutDialog, ProjectEditDialog
+from sheet_to_config.utils.updater import ReleaseInfo
 from sheet_to_config.utils.project_manager import Project, ProjectManager
 from sheet_to_config.utils.export_handler import ExportHandler
 from sheet_to_config.utils.issue_messages import ISSUE_ADVICE_KEYS
+from sheet_to_config.version import __version__
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -259,6 +261,56 @@ class LocalizedUiTests(unittest.TestCase):
                     SheetToConfigWindow._log_level(None, "[12:00:00] [SUCCESS] text"),
                     "success",
                 )
+
+    def test_update_starts_download_without_confirmation_and_shows_progress(self):
+        dialog = AboutDialog()
+        release = ReleaseInfo(
+            version="9.9.9",
+            tag_name="v9.9.9",
+            release_url="https://example.com/release",
+            asset_name="SheetToConfig-v9.9.9-windows-x64.exe",
+            asset_url="https://example.com/update.exe",
+            checksum_url="https://example.com/SHA256SUMS.txt",
+        )
+        try:
+            progress_bars = dialog.findChildren(QProgressBar)
+            self.assertEqual(1, len(progress_bars))
+            self.assertTrue(progress_bars[0].isHidden())
+
+            with patch(
+                "sheet_to_config.dialogs.supports_automatic_update",
+                return_value=True,
+            ), patch.object(QMessageBox, "question") as question:
+                dialog._on_update_task_finished({
+                    "action": "check",
+                    "result": release,
+                    "error": None,
+                })
+
+            question.assert_not_called()
+            self.assertIs(dialog._pending_update_release, release)
+            self.assertFalse(progress_bars[0].isHidden())
+            self.assertEqual(0, progress_bars[0].value())
+        finally:
+            dialog.close()
+
+    def test_update_without_new_release_reports_current_version(self):
+        dialog = AboutDialog()
+        try:
+            with patch.object(QMessageBox, "information") as information:
+                dialog._on_update_task_finished({
+                    "action": "check",
+                    "result": None,
+                    "error": None,
+                })
+
+            information.assert_called_once_with(
+                dialog,
+                i18n.tr("about.title"),
+                i18n.tr("about.update_up_to_date", version=__version__),
+            )
+        finally:
+            dialog.close()
 
     def test_language_write_failure_is_caught_and_keeps_current_locale(self):
         window = SheetToConfigWindow()
