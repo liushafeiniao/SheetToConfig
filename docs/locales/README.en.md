@@ -13,7 +13,7 @@
 
 <p align="center">
   <a href="https://github.com/liushafeiniao/SheetToConfig/actions/workflows/tests.yml"><img alt="Test status" src="https://img.shields.io/github/actions/workflow/status/liushafeiniao/SheetToConfig/tests.yml?branch=main&style=flat-square&label=tests"></a>
-  <a href="https://github.com/liushafeiniao/SheetToConfig/releases"><img alt="Current version 1.0.5" src="https://img.shields.io/badge/version-1.0.5-00D4AA?style=flat-square"></a>
+  <a href="https://github.com/liushafeiniao/SheetToConfig/releases"><img alt="Current version 1.0.6" src="https://img.shields.io/badge/version-1.0.6-00D4AA?style=flat-square"></a>
   <img alt="Windows stable; macOS source and CI" src="https://img.shields.io/badge/platform-Windows%20stable%20%7C%20macOS%20source%2FCI-24292F?style=flat-square">
   <a href="../../LICENSE"><img alt="MIT License" src="https://img.shields.io/badge/license-MIT-24292F?style=flat-square"></a>
 </p>
@@ -359,6 +359,6 @@ Run the full test suite before submitting code. Changes touching export formats,
 
 ## Version and License
 
-- Current version: `1.0.5` in [`sheet_to_config/version.py`](../../sheet_to_config/version.py)
+- Current version: `1.0.6` in [`sheet_to_config/version.py`](../../sheet_to_config/version.py)
 - Changelog: [`CHANGELOG.md`](../../CHANGELOG.md)
 - License: [`MIT`](../../LICENSE)

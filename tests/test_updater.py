@@ -5,12 +5,14 @@ import shutil
 import tempfile
 import unittest
 from pathlib import Path
-from unittest.mock import Mock
+from unittest.mock import Mock, patch
 
 from sheet_to_config.utils.updater import (
     DownloadedUpdate,
     ReleaseInfo,
     UpdateError,
+    apply_update,
+    cleanup_update_workspace,
     download_update,
     expected_sha256,
     fetch_latest_release,
@@ -203,6 +205,56 @@ class UpdaterTests(unittest.TestCase):
                 command[1:],
             )
             self.assertTrue(helper.is_file())
+
+    @unittest.skipUnless(os.name == "nt", "the replacement helper is Windows-only")
+    def test_apply_update_stages_download_in_target_directory(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            current = root / "SheetToConfig.exe"
+            current.write_bytes(b"current")
+            downloaded_dir = root / "download"
+            downloaded_dir.mkdir()
+            downloaded = downloaded_dir / "SheetToConfig-v9.9.9-windows-x64.exe"
+            downloaded.write_bytes(b"downloaded")
+            popen = Mock()
+
+            with patch(
+                "sheet_to_config.utils.updater._wait_for_process",
+                return_value=True,
+            ), patch(
+                "sheet_to_config.utils.updater.subprocess.Popen",
+                popen,
+            ):
+                result = apply_update(current, downloaded, 0)
+
+            self.assertEqual(0, result)
+            self.assertEqual(b"downloaded", current.read_bytes())
+            self.assertTrue(downloaded.exists())
+            self.assertFalse((root / ".SheetToConfig.exe.backup").exists())
+            self.assertFalse((root / ".SheetToConfig.exe.staged").exists())
+            popen.assert_called_once()
+            self.assertEqual([str(current.resolve())], popen.call_args.args[0])
+
+    def test_cleanup_update_workspace_removes_temp_directory(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            workspace = root / "SheetToConfig-update-test"
+            workspace.mkdir()
+            helper = workspace / "SheetToConfig-updater-test.exe"
+            helper.write_bytes(b"helper")
+            (workspace / "SHA256SUMS.txt").write_text("checksum", encoding="utf-8")
+            (workspace / "SheetToConfig-v9.9.9-windows-x64.exe").write_bytes(
+                b"downloaded"
+            )
+
+            with patch(
+                "sheet_to_config.utils.updater._wait_for_process",
+                return_value=True,
+            ):
+                result = cleanup_update_workspace(workspace, helper, 123)
+
+            self.assertEqual(0, result)
+            self.assertFalse(workspace.exists())
 
 
 if __name__ == "__main__":

@@ -13,7 +13,7 @@
 
 <p align="center">
   <a href="https://github.com/liushafeiniao/SheetToConfig/actions/workflows/tests.yml"><img alt="Estado de las pruebas" src="https://img.shields.io/github/actions/workflow/status/liushafeiniao/SheetToConfig/tests.yml?branch=main&style=flat-square&label=tests"></a>
-  <a href="https://github.com/liushafeiniao/SheetToConfig/releases"><img alt="Versión actual 1.0.5" src="https://img.shields.io/badge/version-1.0.5-00D4AA?style=flat-square"></a>
+  <a href="https://github.com/liushafeiniao/SheetToConfig/releases"><img alt="Versión actual 1.0.6" src="https://img.shields.io/badge/version-1.0.6-00D4AA?style=flat-square"></a>
   <img alt="Windows estable; macOS desde código fuente y CI" src="https://img.shields.io/badge/platform-Windows%20stable%20%7C%20macOS%20source%2FCI-24292F?style=flat-square">
   <a href="../../LICENSE"><img alt="MIT License" src="https://img.shields.io/badge/license-MIT-24292F?style=flat-square"></a>
 </p>
@@ -359,6 +359,6 @@ Antes de enviar código, ejecuta primero la suite de pruebas completa. Los cambi
 
 ## Versión y licencia
 
-- Versión actual: `1.0.5` en [`sheet_to_config/version.py`](../../sheet_to_config/version.py)
+- Versión actual: `1.0.6` en [`sheet_to_config/version.py`](../../sheet_to_config/version.py)
 - Historial de cambios: [`CHANGELOG.md`](../../CHANGELOG.md)
 - Licencia de código abierto: [`MIT`](../../LICENSE)

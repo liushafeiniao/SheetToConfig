@@ -307,6 +307,105 @@ def _wait_for_process(pid: int, timeout_seconds: int = 120) -> bool:
         kernel32.CloseHandle(handle)
 
 
+def _update_workspace(
+    downloaded_path: Path,
+    helper_path: Optional[Path],
+) -> Optional[tuple[Path, Path]]:
+    """Return the guarded temporary workspace and helper path, if valid."""
+    if helper_path is None:
+        return None
+    try:
+        workspace = downloaded_path.resolve().parent
+        helper = helper_path.resolve()
+    except OSError:
+        return None
+    if helper.parent != workspace:
+        return None
+    if not workspace.name.startswith("SheetToConfig-update-"):
+        return None
+    if not helper.name.startswith("SheetToConfig-updater-"):
+        return None
+    return workspace, helper
+
+
+def _launch_cleanup_worker(
+    current_path: Path,
+    downloaded_path: Path,
+    helper_path: Optional[Path],
+    helper_pid: int,
+    *,
+    popen: Callable[..., Any] = subprocess.Popen,
+) -> bool:
+    """Ask the restarted EXE to remove the temporary update workspace."""
+    workspace_and_helper = _update_workspace(downloaded_path, helper_path)
+    if workspace_and_helper is None:
+        return False
+    workspace, helper = workspace_and_helper
+    try:
+        popen(
+            [
+                str(current_path),
+                "--cleanup-update",
+                str(workspace),
+                str(helper),
+                str(helper_pid),
+            ],
+            cwd=str(current_path.parent),
+            creationflags=_creation_flags(),
+            close_fds=True,
+        )
+        return True
+    except Exception:
+        return False
+
+
+def cleanup_update_workspace(
+    workspace_path: Path,
+    helper_path: Path,
+    helper_pid: int,
+) -> int:
+    """Delete the temporary update workspace after the helper exits."""
+    if not _wait_for_process(helper_pid):
+        return 1
+    try:
+        workspace = workspace_path.resolve()
+        helper = helper_path.resolve()
+    except OSError:
+        return 1
+    if helper.parent != workspace:
+        return 1
+    if not workspace.name.startswith("SheetToConfig-update-"):
+        return 1
+    if not helper.name.startswith("SheetToConfig-updater-"):
+        return 1
+
+    for _ in range(120):
+        try:
+            helper.unlink(missing_ok=True)
+            shutil.rmtree(workspace)
+            return 0
+        except FileNotFoundError:
+            return 0
+        except PermissionError:
+            time.sleep(0.25)
+        except OSError:
+            time.sleep(0.25)
+    return 1
+
+
+def cleanup_update_from_cli(arguments: list[str]) -> int:
+    """Entry point used by the restarted EXE to remove update temp files."""
+    if len(arguments) != 3:
+        return 1
+    try:
+        workspace_path = Path(arguments[0])
+        helper_path = Path(arguments[1])
+        helper_pid = int(arguments[2])
+    except (TypeError, ValueError):
+        return 1
+    return cleanup_update_workspace(workspace_path, helper_path, helper_pid)
+
+
 def apply_update(
     current_path: Path,
     downloaded_path: Path,
@@ -322,13 +421,20 @@ def apply_update(
         return 1
 
     backup_path = current_path.with_name(f".{current_path.name}.backup")
+    staged_path = current_path.with_name(f".{current_path.name}.staged")
     for _ in range(120):
         try:
             backup_path.unlink(missing_ok=True)
+            staged_path.unlink(missing_ok=True)
+            # Stage the verified download on the target volume first so the
+            # final swap works even when TEMP and the installed EXE are on
+            # different drives.
+            shutil.copy2(downloaded_path, staged_path)
             os.replace(current_path, backup_path)
             try:
-                os.replace(downloaded_path, current_path)
+                os.replace(staged_path, current_path)
             except Exception:
+                staged_path.unlink(missing_ok=True)
                 os.replace(backup_path, current_path)
                 return 1
             subprocess.Popen(
@@ -336,6 +442,12 @@ def apply_update(
                 cwd=str(current_path.parent),
                 creationflags=_creation_flags(),
                 close_fds=True,
+            )
+            _launch_cleanup_worker(
+                current_path,
+                downloaded_path,
+                helper_path,
+                os.getpid(),
             )
             backup_path.unlink(missing_ok=True)
             return 0
