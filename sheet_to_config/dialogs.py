@@ -1031,6 +1031,7 @@ class AboutDialog(QDialog):
         self._update_release = None
         self._update_button = None
         self._update_progress = None
+        self._update_progress_label = None
         self._close_button = None
         self._pending_update_release = None
         self._allow_update_close = False
@@ -1125,20 +1126,43 @@ class AboutDialog(QDialog):
         actions_row.addStretch()
         layout.addLayout(actions_row)
 
+        progress_container = QFrame()
+        progress_container.setStyleSheet("background: transparent; border: none;")
+        progress_layout = QGridLayout(progress_container)
+        progress_layout.setContentsMargins(0, 0, 0, 0)
+        progress_layout.setSpacing(0)
+
         update_progress = QProgressBar()
         update_progress.setRange(0, 100)
         update_progress.setValue(0)
-        update_progress.setTextVisible(True)
+        update_progress.setTextVisible(False)
+        update_progress.setFixedHeight(24)
         update_progress.setVisible(False)
         update_progress.setStyleSheet(
-            f"QProgressBar {{ color: {self.colors['text_light']}; "
-            f"border: 1px solid {self.colors['border']}; border-radius: 4px; "
-            f"background: {self.colors['bg_medium']}; height: 16px; }} "
+            f"QProgressBar {{ border: 1px solid {self.colors['accent']}; "
+            f"border-radius: 6px; background: {self.colors['bg_medium']}; "
+            "min-height: 24px; }} "
             f"QProgressBar::chunk {{ background: {self.colors['accent']}; "
-            "border-radius: 3px; }}"
+            "border-radius: 5px; margin: 1px; }}"
         )
+        progress_layout.addWidget(update_progress, 0, 0)
+
+        update_progress_label = QLabel(tr('about.update_checking'))
+        update_progress_label.setObjectName("updateProgressText")
+        update_progress_label.setAlignment(Qt.AlignCenter)
+        update_progress_label.setAttribute(QtCore.Qt.WA_TransparentForMouseEvents)
+        update_progress_label.setVisible(False)
+        update_progress_label.setStyleSheet(
+            f"color: {self.colors['text_light']}; "
+            "font-size: 12px; font-weight: bold; "
+            f"background: {_rgba(self.colors['bg_dark'], 0.72)}; "
+            "padding: 2px 10px; border-radius: 10px;"
+        )
+        progress_layout.addWidget(update_progress_label, 0, 0, Qt.AlignCenter)
+
         self._update_progress = update_progress
-        layout.addWidget(update_progress)
+        self._update_progress_label = update_progress_label
+        layout.addWidget(progress_container)
 
         layout.addWidget(self._make_divider())
 
@@ -1152,11 +1176,32 @@ class AboutDialog(QDialog):
             self._close_button.setEnabled(not busy)
         if self._update_progress is not None:
             self._update_progress.setVisible(busy)
+            if self._update_progress_label is not None:
+                self._update_progress_label.setVisible(busy)
             if busy and self._update_release is not None:
                 self._update_progress.setRange(0, 100)
                 self._update_progress.setValue(0)
+                self._set_update_progress_text()
             elif busy:
                 self._update_progress.setRange(0, 0)
+                self._set_update_progress_text()
+
+    def _update_progress_message(self, percent: int | None = None) -> str:
+        if self._update_release is None:
+            return tr('about.update_checking')
+        if percent is None:
+            return tr('about.update_downloading', version=self._update_release.version)
+        return tr(
+            'about.update_downloading_progress',
+            version=self._update_release.version,
+            percent=percent,
+        )
+
+    def _set_update_progress_text(self, percent: int | None = None):
+        if self._update_progress_label is not None:
+            self._update_progress_label.setText(
+                self._update_progress_message(percent)
+            )
 
     def _start_update_task(self, action: str, release: ReleaseInfo | None = None):
         if self._update_thread is not None:
@@ -1194,8 +1239,10 @@ class AboutDialog(QDialog):
             percent = min(100, int(current * 100 / total))
             self._update_progress.setRange(0, 100)
             self._update_progress.setValue(percent)
+            self._set_update_progress_text(percent)
         else:
             self._update_progress.setRange(0, 0)
+            self._set_update_progress_text()
 
     def _check_for_updates(self):
         self._update_release = None

@@ -6,7 +6,8 @@ from unittest.mock import patch
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
-from PyQt5.QtWidgets import QApplication, QMainWindow, QMessageBox, QProgressBar
+from PyQt5.QtCore import Qt
+from PyQt5.QtWidgets import QApplication, QLabel, QMainWindow, QMessageBox, QProgressBar
 
 from sheet_to_config import i18n
 from SheetToConfig import SheetToConfigWindow
@@ -274,8 +275,11 @@ class LocalizedUiTests(unittest.TestCase):
         )
         try:
             progress_bars = dialog.findChildren(QProgressBar)
+            progress_text = dialog.findChild(QLabel, "updateProgressText")
             self.assertEqual(1, len(progress_bars))
             self.assertTrue(progress_bars[0].isHidden())
+            self.assertIsNotNone(progress_text)
+            self.assertTrue(progress_text.isHidden())
 
             with patch(
                 "sheet_to_config.dialogs.supports_automatic_update",
@@ -290,7 +294,49 @@ class LocalizedUiTests(unittest.TestCase):
             question.assert_not_called()
             self.assertIs(dialog._pending_update_release, release)
             self.assertFalse(progress_bars[0].isHidden())
+            self.assertFalse(progress_text.isHidden())
             self.assertEqual(0, progress_bars[0].value())
+            self.assertEqual(
+                Qt.AlignCenter,
+                progress_text.alignment(),
+            )
+            self.assertEqual(
+                i18n.tr("about.update_downloading", version=release.version),
+                progress_text.text(),
+            )
+        finally:
+            dialog.close()
+
+    def test_update_progress_text_is_centered_and_reports_percent(self):
+        dialog = AboutDialog()
+        release = ReleaseInfo(
+            version="9.9.9",
+            tag_name="v9.9.9",
+            release_url="https://example.com/release",
+            asset_name="SheetToConfig-v9.9.9-windows-x64.exe",
+            asset_url="https://example.com/update.exe",
+            checksum_url="https://example.com/SHA256SUMS.txt",
+        )
+        try:
+            progress_bar = dialog.findChild(QProgressBar)
+            progress_text = dialog.findChild(QLabel, "updateProgressText")
+            dialog._update_release = release
+            dialog._set_update_busy(True)
+            dialog._on_update_progress(37, 100)
+
+            self.assertIsNotNone(progress_bar)
+            self.assertIsNotNone(progress_text)
+            self.assertEqual(37, progress_bar.value())
+            self.assertEqual(Qt.AlignCenter, progress_text.alignment())
+            self.assertEqual(
+                i18n.tr(
+                    "about.update_downloading_progress",
+                    version=release.version,
+                    percent=37,
+                ),
+                progress_text.text(),
+            )
+            self.assertIn("font-weight: bold", progress_text.styleSheet())
         finally:
             dialog.close()
 
