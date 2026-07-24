@@ -235,7 +235,7 @@
   "issue.advice.duplicate_value": "Make the value unique after type conversion.",
   "issue.advice.bytes_format_error": "Use .pb for bytes fields, or change the field to a JSON/Lua-supported type.",
   "issue.advice.missing_primary_key": "Put a field name in A1 and keep the first physical column as the primary key.",
-  "issue.advice.invalid_primary_key": "Set the type cell in row 2 to a scalar such as int or string; lists, dictionaries, bytes, and find_id cannot be primary keys.",
+  "issue.advice.invalid_primary_key": "Set the type cell in row 2 to a scalar such as int or string. Lists, dictionaries, and bytes cannot be primary keys; find_id/find is allowed when its target field resolves to a scalar.",
   "issue.advice.invalid_json_root_key": "Make the first exported key non-empty, scalar, and unique after conversion.",
   "issue.advice.primary_key_not_exported": "Include this column in the requested target platform on row 3, for example CS.",
   "issue.advice.missing_code": "Add a CODE sheet with a valid Sheet, File, and Platform row.",

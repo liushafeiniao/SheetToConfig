@@ -8,7 +8,7 @@ import os
 from typing import Any, Callable, Dict, List, Set, Tuple, Optional
 from openpyxl import load_workbook
 
-from .type_registry import UndefinedTypeError
+from .type_registry import UndefinedTypeError, is_reference_sheet_active
 
 
 class ReferenceError(Exception):
@@ -225,6 +225,13 @@ class ReferenceValidator:
                         # not independent ID definitions.
                         continue
                 found_definition = True
+
+                # An empty or intentionally excluded preparation sheet may
+                # define the same field name with another type. Keep its
+                # schema visible for missing-reference diagnostics, but do
+                # not let its empty data participate in ID validation.
+                if not is_reference_sheet_active(ws):
+                    continue
                 
                 # 读取该列的所有值（从第5行开始）
                 for row in rows[4:]:

@@ -13,7 +13,7 @@
 
 <p align="center">
   <a href="https://github.com/liushafeiniao/SheetToConfig/actions/workflows/tests.yml"><img alt="測試狀態" src="https://img.shields.io/github/actions/workflow/status/liushafeiniao/SheetToConfig/tests.yml?branch=main&style=flat-square&label=tests"></a>
-  <a href="https://github.com/liushafeiniao/SheetToConfig/releases"><img alt="目前版本 1.0.4" src="https://img.shields.io/badge/version-1.0.4-00D4AA?style=flat-square"></a>
+  <a href="https://github.com/liushafeiniao/SheetToConfig/releases"><img alt="目前版本 1.0.5" src="https://img.shields.io/badge/version-1.0.5-00D4AA?style=flat-square"></a>
   <img alt="Windows 穩定版；macOS 原始碼與 CI" src="https://img.shields.io/badge/platform-Windows%20stable%20%7C%20macOS%20source%2FCI-24292F?style=flat-square">
   <a href="../../LICENSE"><img alt="MIT License" src="https://img.shields.io/badge/license-MIT-24292F?style=flat-square"></a>
 </p>
@@ -359,6 +359,6 @@ tests/                        自動化測試
 
 ## 版本與授權
 
-- 目前版本：[`sheet_to_config/version.py`](../../sheet_to_config/version.py) 中的 `1.0.4`
+- 目前版本：[`sheet_to_config/version.py`](../../sheet_to_config/version.py) 中的 `1.0.5`
 - 變更記錄：[`CHANGELOG.md`](../../CHANGELOG.md)
 - 開源授權：[`MIT`](../../LICENSE)

@@ -235,7 +235,7 @@
   "issue.advice.duplicate_value": "型変換後の列全体で値が一意になるように変更してください。",
   "issue.advice.bytes_format_error": "bytes フィールドは .pb で出力するか、JSON/Lua 対応の型に変更してください。",
   "issue.advice.missing_primary_key": "A1 にフィールド名を入力し、先頭の実体列を主キーにしてください。",
-  "issue.advice.invalid_primary_key": "2行目の型を int や string などのスカラー型にしてください。リスト、辞書、bytes、find_id は主キーにできません。",
+  "issue.advice.invalid_primary_key": "2行目の型を int や string などのスカラー型にしてください。リスト、辞書、bytes は主キーにできません。find_id/find は参照先フィールドがスカラー型に解決できる場合に限り使用できます。",
   "issue.advice.invalid_json_root_key": "先頭列の変換後の値を空でないスカラーかつ一意にしてください。",
   "issue.advice.primary_key_not_exported": "3行目でこの列を対象プラットフォームに含めてください。たとえば CS を指定します。",
   "issue.advice.missing_code": "有効な Sheet、File、Platform 行を持つ CODE シートを追加してください。",

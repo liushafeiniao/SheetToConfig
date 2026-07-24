@@ -550,10 +550,23 @@ class ExcelConverter:
         prefix = f"第一列主键 '{field_name}' 的类型单元格 {type_cell} 当前是 '{type_name}'"
         lowered = expression.lower()
         if re.search(r'\b(find_id|find)\s*\(', lowered):
+            try:
+                resolved = self.type_registry.resolve_scalar_type(type_name)
+            except UndefinedTypeError as exc:
+                return (
+                    f"{prefix}，但无法确定引用目标最终类型：{exc}。"
+                    f"请检查 find_id/find 的目标工作簿、字段和类型。"
+                )
+            if resolved in {'int', 'str', 'float', 'bool'}:
+                return ''
+            if resolved == 'bytes':
+                return (
+                    f"{prefix}，引用目标最终是 bytes 类型，不能作为主键。"
+                    f"请将 {type_cell} 改为 int/string 等可作为主键的标量类型。"
+                )
             return (
-                f"{prefix}，这是 find_id 跨表引用类型，不能作为本表主键。"
-                f"请将 {type_cell} 改为 int（或其他标量类型）；'{type_name}' 只能用于"
-                "其他字段引用本表或其他表的 ID。"
+                f"{prefix}，引用目标没有解析为可用的标量类型。"
+                f"请检查 find_id/find 的目标字段；列表和字典不能作为主键。"
             )
         if re.search(r'\b(split_list|split_dict)\b', lowered) or 'list' in lowered:
             return (
@@ -566,6 +579,63 @@ class ExcelConverter:
                 f"请将 {type_cell} 改为 int/string 等标量类型。"
             )
         return ''
+
+    @staticmethod
+    def _primary_key_scalar_value(value: Any) -> Any:
+        """Extract the scalar ID from a reference value that keeps metadata."""
+        if not isinstance(value, dict):
+            return value
+        if not any(str(key).startswith('_') for key in value):
+            return value
+        candidates = [
+            item for key, item in value.items()
+            if not str(key).startswith('_')
+        ]
+        return candidates[0] if len(candidates) == 1 else value
+
+    @staticmethod
+    def _has_cell_value(value: Any) -> bool:
+        """Return whether a cell contains meaningful user data."""
+        return value is not None and (
+            not isinstance(value, str) or bool(value.strip())
+        )
+
+    def _should_skip_worksheet_validation(self, worksheet) -> bool:
+        """Skip export validation for empty or intentionally unused sheets."""
+        rows = getattr(worksheet, 'rows', ()) or ()
+        if not any(
+            any(self._has_cell_value(value) for value in row.data)
+            for row in rows
+        ):
+            return True
+
+        field_info = getattr(worksheet, 'field_info', {}) or {}
+        if not field_info:
+            return False
+
+        platforms = [
+            str(info.platform or 'cs').strip().lower()
+            for info in field_info.values()
+        ]
+        if platforms and all(platform == 'x' for platform in platforms):
+            return True
+
+        primary_info = next(
+            (
+                info for name, info in field_info.items()
+                if worksheet.get_column_index(name) == 0
+            ),
+            None,
+        )
+        if primary_info is None:
+            return False
+        if str(primary_info.platform or '').strip().lower() == 'x':
+            return True
+
+        return not any(
+            row.data and self._has_cell_value(row.data[0])
+            for row in rows
+        )
 
     def _worksheet_to_data(self, worksheet, cors: str,
                            omit_empty_fields: Optional[set] = None,
@@ -581,8 +651,12 @@ class ExcelConverter:
         Returns:
             转换后的数据列表
         """
+        if self._should_skip_worksheet_validation(worksheet):
+            return []
+
         # 构建字段信息
-        field_info = field_info or self._build_field_info(worksheet, cors)
+        if field_info is None:
+            field_info = self._build_field_info(worksheet, cors)
         
         issue_start = len(self._issues)
         primary_field = next(
@@ -665,12 +739,14 @@ class ExcelConverter:
             except ConverterError:
                 continue
             converted.excel_row = excel_row_num
-            primary_value = converted.get(primary_field)
+            primary_value = self._primary_key_scalar_value(
+                converted.get(primary_field)
+            )
             if primary_value is None or isinstance(primary_value, (list, dict, bytes, bytearray)):
                 self._record_issue(
                     "INVALID_PRIMARY_KEY",
                     f"第一列主键 '{primary_field}' 转换后不是标量。请检查 A2 类型，"
-                    "第一列应使用 int/string 等标量类型，不能使用列表、字典或 find_id 引用类型。",
+                    "第一列应使用 int/string 等标量类型；列表、字典或 bytes 不能作为主键。",
                     field=primary_field, raw_value=first_col_value,
                     row=excel_row_num, column=1,
                 )
@@ -688,6 +764,8 @@ class ExcelConverter:
             column = filtered_field_info[field_name].get('col_idx', -1) + 1
             for excel_row_num, converted in converted_rows:
                 value = converted.get(field_name)
+                if field_name == primary_field:
+                    value = self._primary_key_scalar_value(value)
                 canonical = json.dumps(
                     value, ensure_ascii=False, sort_keys=True, default=str,
                     separators=(',', ':'),
@@ -730,7 +808,7 @@ class ExcelConverter:
         for row in data:
             if not row:
                 continue
-            key_value = row.get(key_field)
+            key_value = self._primary_key_scalar_value(row.get(key_field))
             raw_key_value = getattr(row, 'raw_data', {}).get(key_field)
             excel_row = getattr(row, 'excel_row', 0)
             if (
@@ -907,9 +985,16 @@ class ExcelConverter:
             has_error = False
 
             try:
+                skip_sheet_validation = self._should_skip_worksheet_validation(
+                    worksheet
+                )
                 # Compile only types used by this worksheet and export target.
                 # Unused TypeDefinition rows must not block unrelated exports.
-                field_info = self._build_field_info(worksheet, export_platform)
+                field_info = (
+                    {}
+                    if skip_sheet_validation and code.format in ('json', 'lua')
+                    else self._build_field_info(worksheet, export_platform)
+                )
                 file_name = self._strip_output_extension(code.file_name, 'pb')
                 proto_schema = None
                 if code.format == 'pb':

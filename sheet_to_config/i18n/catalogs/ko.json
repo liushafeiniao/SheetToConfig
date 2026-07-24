@@ -235,7 +235,7 @@
   "issue.advice.duplicate_value": "타입 변환 후 열 전체에서 값이 고유하도록 수정하세요.",
   "issue.advice.bytes_format_error": "bytes 필드는 .pb로 내보내거나 JSON/Lua 지원 타입으로 변경하세요.",
   "issue.advice.missing_primary_key": "A1에 필드 이름을 입력하고 첫 번째 실제 열을 기본 키로 유지하세요.",
-  "issue.advice.invalid_primary_key": "2행 타입을 int 또는 string 같은 스칼라로 설정하세요. 목록, 사전, bytes, find_id는 기본 키가 될 수 없습니다.",
+  "issue.advice.invalid_primary_key": "2행 타입을 int 또는 string 같은 스칼라로 설정하세요. 목록, 사전, bytes는 기본 키가 될 수 없으며 find_id/find는 대상 필드가 스칼라로 해석될 때만 사용할 수 있습니다.",
   "issue.advice.invalid_json_root_key": "첫 번째 열의 변환 결과가 비어 있지 않은 스칼라이며 고유하도록 수정하세요.",
   "issue.advice.primary_key_not_exported": "3행에서 이 열을 대상 플랫폼에 포함하세요. 예를 들어 CS를 입력합니다.",
   "issue.advice.missing_code": "유효한 Sheet, File, Platform 행이 있는 CODE 시트를 추가하세요.",

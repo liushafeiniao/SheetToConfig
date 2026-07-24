@@ -16,7 +16,7 @@
 当前稳定 Release 只发布 Windows x64；macOS 未签名构建仅供维护者内部验证。
 """
 
-__version__ = "1.0.4"
+__version__ = "1.0.5"
 
 APP_NAME = "SheetToConfig"
 APP_TITLE = "SheetToConfig"

@@ -235,7 +235,7 @@
   "issue.advice.duplicate_value": "请修改重复值，确保转换后的整列值唯一。",
   "issue.advice.bytes_format_error": "bytes 字段请使用 .pb 导出，或改成 JSON/Lua 支持的类型。",
   "issue.advice.missing_primary_key": "请在 A1 填写字段名，并保持第一物理列作为主键列。",
-  "issue.advice.invalid_primary_key": "请将第 2 行类型改为 int、string 等标量类型；列表、字典、bytes 和 find_id 不能作为主键。",
+  "issue.advice.invalid_primary_key": "请将第 2 行类型填写为 int、string 等标量类型。列表、字典和 bytes 不能作为主键；find_id/find 只有在目标字段最终是标量时才能作为主键。",
   "issue.advice.invalid_json_root_key": "请让第一列转换后是非空、标量且唯一的值。",
   "issue.advice.primary_key_not_exported": "请在第 3 行为该列勾选当前目标平台，例如填写 CS。",
   "issue.advice.missing_code": "请添加 CODE 工作表，并填写有效的 Sheet、File 和 Platform 行。",

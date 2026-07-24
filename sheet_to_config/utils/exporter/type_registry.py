@@ -50,6 +50,55 @@ class TypeDefinitionLoadError(UndefinedTypeError):
         super().__init__(summary or "TypeDefinition.xlsx 无效")
 
 
+def _has_cell_value(value: Any) -> bool:
+    """Return whether a worksheet cell contains meaningful user data."""
+    return value is not None and (
+        not isinstance(value, str) or bool(value.strip())
+    )
+
+
+def is_reference_sheet_active(worksheet) -> bool:
+    """Apply the normal four-row export rules to a reference worksheet.
+
+    Empty preparation sheets are allowed to contain type definitions, but
+    they must not participate in reference type inference or ID collection.
+    The first data row is Excel row 5, and the first column is the primary key.
+    """
+    header_rows = list(worksheet.iter_rows(
+        min_row=1, max_row=4, values_only=True
+    ))
+    if len(header_rows) < 3:
+        return True
+
+    names = header_rows[0] or ()
+    named_columns = [
+        index for index, value in enumerate(names) if _has_cell_value(value)
+    ]
+    if not named_columns:
+        return False
+
+    platforms = header_rows[2] or ()
+    platform_at = lambda index: (
+        str(platforms[index] or '').strip().lower()
+        if index < len(platforms) else ''
+    )
+    if all(platform_at(index) == 'x' for index in named_columns):
+        return False
+    if 0 in named_columns and platform_at(0) == 'x':
+        return False
+
+    has_data = False
+    has_primary_key = False
+    for row in worksheet.iter_rows(min_row=5, values_only=True):
+        if any(_has_cell_value(value) for value in row):
+            has_data = True
+        if row and _has_cell_value(row[0]):
+            has_primary_key = True
+        if has_data and has_primary_key:
+            return True
+    return False
+
+
 class _ReferenceTypeCycle(Exception):
     """Internal marker for a cycle made only of find/find_id edges."""
 
@@ -652,6 +701,8 @@ class TypeRegistry:
                 if sheet_name.upper() in ('CODE', 'PROTO'):
                     continue
                 worksheet = workbook[sheet_name]
+                if not is_reference_sheet_active(worksheet):
+                    continue
                 rows = list(worksheet.iter_rows(
                     min_row=1, max_row=2, values_only=True
                 ))

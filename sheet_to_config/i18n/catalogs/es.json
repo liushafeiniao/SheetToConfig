@@ -235,7 +235,7 @@
   "issue.advice.duplicate_value": "Haga que el valor sea único después de la conversión.",
   "issue.advice.bytes_format_error": "Use .pb para campos bytes o cambie el campo a un tipo compatible con JSON/Lua.",
   "issue.advice.missing_primary_key": "Escriba un nombre de campo en A1 y mantenga la primera columna física como clave primaria.",
-  "issue.advice.invalid_primary_key": "Use en la fila 2 un tipo escalar como int o string; las listas, diccionarios, bytes y find_id no pueden ser claves primarias.",
+  "issue.advice.invalid_primary_key": "Use en la fila 2 un tipo escalar como int o string. Las listas, diccionarios y bytes no pueden ser claves primarias; find_id/find sí se permite cuando el campo de destino es escalar.",
   "issue.advice.invalid_json_root_key": "Haga que la primera clave exportada sea no vacía, escalar y única después de la conversión.",
   "issue.advice.primary_key_not_exported": "Incluya esta columna en la plataforma solicitada en la fila 3, por ejemplo CS.",
   "issue.advice.missing_code": "Añada una hoja CODE con una fila válida de Sheet, File y Platform.",

@@ -403,6 +403,209 @@ class ConverterValidationTests(unittest.TestCase):
             self.assertIn("A2", invalid_type["message"])
             self.assertIn("int/string", invalid_type["message"])
 
+    def test_scalar_find_id_reference_can_be_the_primary_key(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            tables = root / "tables"
+            tables.mkdir()
+            TypeDefinitionTemplate.ensure_exists(str(tables))
+            definitions = load_workbook(tables / "TypeDefinition.xlsx")
+            definitions["CODE"].append(("ItemID", "int", "target ID alias"))
+            definitions["CODE"].append((
+                "item_ref", "find_id(Item,物品表,item_id)", "item reference"
+            ))
+            definitions.save(tables / "TypeDefinition.xlsx")
+            definitions.close()
+
+            write_workbook(
+                tables / "Item.xlsx",
+                fields=(
+                    ("id", "int", "CS"),
+                    ("item_id", "ItemID", "CS"),
+                    ("name", "string", "CS"),
+                ),
+                data_rows=((1, 102201, "Potion"),),
+                code_rows=(("物品表", "Item.json", "c"),),
+                sheet="物品表",
+            )
+            write_workbook(
+                tables / "Hero.xlsx",
+                fields=(
+                    ("id", "item_ref", "CS"),
+                    ("name", "string", "CS"),
+                ),
+                data_rows=((102201, "Hero"),),
+                code_rows=(("Hero", "Hero.json", "c"),),
+                sheet="Hero",
+            )
+
+            client = root / "client"
+            result = ExcelConverter().export_all(
+                str(tables), str(client), str(root / "server"), "c"
+            )
+
+            self.assertTrue(result["success"], result["issues"])
+            hero = json.loads(
+                (client / "Hero.json").read_text(encoding="utf-8")
+            )
+            self.assertEqual({"102201"}, set(hero))
+            self.assertEqual(102201, hero["102201"]["id"]["item_id"])
+            self.assertEqual("Item", hero["102201"]["id"]["_table"])
+
+    def test_empty_reference_sheet_does_not_conflict_with_non_empty_sheet(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            tables = root / "tables"
+            tables.mkdir()
+            TypeDefinitionTemplate.ensure_exists(str(tables))
+            definitions = load_workbook(tables / "TypeDefinition.xlsx")
+            definitions["CODE"].append((
+                "item_ref", "find_id(Item,物品表,id)", "item reference",
+            ))
+            definitions.save(tables / "TypeDefinition.xlsx")
+            definitions.close()
+
+            item_path = write_workbook(
+                tables / "Item.xlsx",
+                fields=(("id", "int", "CS"), ("name", "string", "CS")),
+                data_rows=((102201, "Potion"),),
+                code_rows=(("物品表", "Item.json", "c"),),
+                sheet="物品表",
+            )
+            item_workbook = load_workbook(item_path)
+            empty = item_workbook.create_sheet("初始物品")
+            empty.append(("id", "name"))
+            empty.append(("string", "string"))
+            empty.append(("CS", "CS"))
+            empty.append(("", ""))
+            item_workbook.save(item_path)
+            item_workbook.close()
+
+            write_workbook(
+                tables / "Product.xlsx",
+                fields=(("id", "int", "CS"), ("item_id", "item_ref", "CS")),
+                data_rows=((1, 102201),),
+                code_rows=(("Product", "Product.json", "c"),),
+                sheet="Product",
+            )
+
+            result = ExcelConverter().export_all(
+                str(tables), str(root / "client"), str(root / "server"), "c"
+            )
+
+            self.assertTrue(result["success"], result["issues"])
+            product = json.loads(
+                (root / "client" / "Product.json").read_text(encoding="utf-8")
+            )
+            self.assertEqual({"1"}, set(product))
+            self.assertEqual(102201, product["1"]["item_id"])
+
+    def test_non_empty_reference_sheets_still_report_type_conflicts(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            tables = root / "tables"
+            tables.mkdir()
+            TypeDefinitionTemplate.ensure_exists(str(tables))
+            definitions = load_workbook(tables / "TypeDefinition.xlsx")
+            definitions["CODE"].append((
+                "item_ref", "find_id(Item,物品表,id)", "item reference",
+            ))
+            definitions.save(tables / "TypeDefinition.xlsx")
+            definitions.close()
+
+            item_path = write_workbook(
+                tables / "Item.xlsx",
+                fields=(("id", "int", "CS"),),
+                data_rows=((102201,),),
+                code_rows=(("物品表", "Items.json", "c"),),
+                sheet="物品表",
+            )
+            item_workbook = load_workbook(item_path)
+            conflicting = item_workbook.create_sheet("其他物品")
+            conflicting.append(("id",))
+            conflicting.append(("string",))
+            conflicting.append(("CS",))
+            conflicting.append(("",))
+            conflicting.append(("another-id",))
+            item_workbook.save(item_path)
+            item_workbook.close()
+
+            write_workbook(
+                tables / "Product.xlsx",
+                fields=(("id", "int", "CS"), ("item_id", "item_ref", "CS")),
+                data_rows=((1, 102201),),
+                code_rows=(("Product", "Product.json", "c"),),
+                sheet="Product",
+            )
+
+            result = ExcelConverter().export_all(
+                str(tables), str(root / "client"), str(root / "server"), "c",
+                validation_only=True,
+            )
+
+            self.assertFalse(result["success"], result["issues"])
+            self.assertTrue(
+                any(
+                    "类型冲突" in issue["message"]
+                    for issue in result["issues"]
+                ),
+                result["issues"],
+            )
+
+    def test_unused_or_empty_sheets_skip_primary_key_validation(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            tables = root / "tables"
+            tables.mkdir()
+            TypeDefinitionTemplate.ensure_exists(str(tables))
+            definitions = load_workbook(tables / "TypeDefinition.xlsx")
+            definitions["CODE"].append(
+                ("missing_ref", "find_id(Missing,Missing,id)", "")
+            )
+            definitions.save(tables / "TypeDefinition.xlsx")
+            definitions.close()
+
+            write_workbook(
+                tables / "Empty.xlsx",
+                fields=(
+                    ("id", "missing_ref", "X"),
+                    ("value", "missing_ref", "X"),
+                ),
+                data_rows=(),
+                code_rows=(("Item", "Empty.json", "c"),),
+            )
+            write_workbook(
+                tables / "ExcludedKey.xlsx",
+                fields=(
+                    ("id", "missing_ref", "X"),
+                    ("value", "int", "C"),
+                ),
+                data_rows=((1, 2),),
+                code_rows=(("Item", "ExcludedKey.json", "c"),),
+            )
+            write_workbook(
+                tables / "BlankKey.xlsx",
+                fields=(
+                    ("id", "int", "CS"),
+                    ("value", "missing_ref", "C"),
+                ),
+                data_rows=((None, "kept outside key"),),
+                code_rows=(("Item", "BlankKey.json", "c"),),
+            )
+
+            client = root / "client"
+            server = root / "server"
+            result = ExcelConverter().export_all(
+                str(tables), str(client), str(server), "c"
+            )
+
+            self.assertTrue(result["success"], result["issues"])
+            self.assertEqual(result["issues"], [])
+            for name in ("Empty", "ExcludedKey", "BlankKey"):
+                output = client / f"{name}.json"
+                self.assertTrue(output.exists(), name)
+                self.assertEqual(json.loads(output.read_text(encoding="utf-8")), {})
+
     def test_repeated_row_errors_are_reported_once_per_field(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)

@@ -235,7 +235,7 @@
   "issue.advice.duplicate_value": "請修改重複值，確保型別轉換後整欄值唯一。",
   "issue.advice.bytes_format_error": "bytes 欄位請使用 .pb 匯出，或改為 JSON/Lua 支援的型別。",
   "issue.advice.missing_primary_key": "請在 A1 填寫欄位名稱，並保持第一個實體欄位作為主鍵欄位。",
-  "issue.advice.invalid_primary_key": "請將第 2 列型別改為 int、string 等純量型別；列表、字典、bytes 和 find_id 不能作為主鍵。",
+  "issue.advice.invalid_primary_key": "請將第 2 列型別填寫為 int、string 等純量型別。列表、字典和 bytes 不能作為主鍵；find_id/find 只有在目標欄位最終是純量時才能作為主鍵。",
   "issue.advice.invalid_json_root_key": "請讓第一欄轉換後是非空、純量且唯一的值。",
   "issue.advice.primary_key_not_exported": "請在第 3 列將此欄位包含在目前目標平台，例如填寫 CS。",
   "issue.advice.missing_code": "請新增 CODE 工作表，並填寫有效的 Sheet、File 和 Platform 列。",
